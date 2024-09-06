@@ -25,7 +25,6 @@ def save_response(url, response_text):
         json.dump(json_data, f, ensure_ascii=False, indent=4)
 
 def get_json_from_html(html):
-    """Ищем JSON-данные, встроенные в HTML."""
     json_data = []
     
     json_matches = re.findall(r'({.*?})', html)
@@ -39,7 +38,6 @@ def get_json_from_html(html):
     return json_data
 
 def collect_info(url):
-    """Сохраняем HTML и JSON данные для указанного URL."""
     headers = {'User-Agent': ua.random}
     response = requests.get(url, headers=headers)
     
