@@ -8,124 +8,138 @@ from dotenv import load_dotenv
 from typing import Tuple, Optional
 import os
 from bs4 import BeautifulSoup
+import asyncio
 
-# Загрузка переменных из .env файла
 load_dotenv()
 
 class ProductParser:
     def __init__(self):
         self.ua = UserAgent()
-        print("ProductParser initialized.")
 
     def get_json_from_html(self, html: str) -> list:
-        print("Extracting JSON from HTML.")
+        soup = BeautifulSoup(html, 'html.parser')
         json_data = []
-        json_matches = re.findall(r'({.*?})', html)
-        for match in json_matches:
+        scripts = soup.find_all('script', type='application/ld+json')
+        for script in scripts:
             try:
-                json_data.append(json.loads(match))
+                json_obj = json.loads(script.string)
+                json_data.append(json_obj)
             except json.JSONDecodeError:
-                print(f"JSON Decode Error for: {match}")
                 continue
-        print(f"Found JSON data: {json_data}")
+        
+        if not json_data:
+            json_matches = re.findall(r'({.*?})', html)
+            for match in json_matches:
+                try:
+                    json_data.append(json.loads(match))
+                except json.JSONDecodeError:
+                    continue
         return json_data
 
     def parse_json(self, json_data: list) -> Optional[Tuple[str, str]]:
-        print("Parsing JSON data.")
-        for item in json_data:
-            if isinstance(item, dict):
-                price = item.get('price', None)
-                name = item.get('name', None)
+        def extract_info(data):
+            if isinstance(data, dict):
+                if 'price' in data:
+                    price = data['price']
+                elif 'offers' in data and 'price' in data['offers']:
+                    price = data['offers']['price']
+                else:
+                    price = None
+                
+                if 'name' in data:
+                    name = data['name']
+                elif 'title' in data:
+                    name = data['title']
+                else:
+                    name = None
+                
                 if price and name:
-                    print(f"Parsed JSON data - Name: {name}, Price: {price}")
                     return price, name
-            elif isinstance(item, list):
-                for sub_item in item:
-                    if isinstance(sub_item, dict):
-                        result = self.parse_json([sub_item])
-                        if result:
-                            return result
-        print("No valid data found in JSON.")
+            elif isinstance(data, list):
+                for item in data:
+                    result = extract_info(item)
+                    if result:
+                        return result
+            return None
+
+        for data in json_data:
+            result = extract_info(data)
+            if result:
+                return result
+
         return None
 
     def parse_html(self, html: str) -> Optional[Tuple[str, str]]:
-        print("Parsing HTML data.")
         soup = BeautifulSoup(html, 'html.parser')
         
-        # Common patterns for finding product names and prices
-        name_selectors = [
-            ('span', {'class': 'product-name'}),
-            ('h1', {'class': 'product-title'}),
-            ('h2', {'class': 'product-title'}),
-            ('div', {'class': 'product-name'}),
-            ('div', {'class': 'product-title'}),
-            ('meta', {'property': 'og:title'}),
-        ]
-        
-        price_selectors = [
-            ('span', {'class': 'product-price'}),
-            ('span', {'class': 'price'}),
-            ('div', {'class': 'price'}),
-            ('div', {'class': 'product-price'}),
-            ('meta', {'property': 'product:price:amount'}),
-            ('meta', {'property': 'og:price:amount'}),
-        ]
-        
-        # Extract product name
         name = None
+        price = None
+        
+        name_selectors = [
+            ('span', {'class': re.compile(r'product.*name', re.I)}),
+            ('h1', {'class': re.compile(r'product.*title', re.I)}),
+            ('meta', {'property': 'og:title'}),
+            ('meta', {'name': 'title'}),
+        ]
+        
         for tag, attrs in name_selectors:
             name_tag = soup.find(tag, attrs)
             if name_tag:
-                name = name_tag.get_text(strip=True)
-                if name:
-                    break
-
-        # Extract product price
-        price = None
+                name = name_tag.get('content') if tag == 'meta' else name_tag.get_text(strip=True)
+                break
+        
+        price_selectors = [
+            ('span', {'class': re.compile(r'product.*price', re.I)}),
+            ('span', {'class': re.compile(r'price', re.I)}),
+            ('meta', {'property': re.compile(r'price', re.I)}),
+            ('div', {'class': re.compile(r'price', re.I)}),
+        ]
+        
         for tag, attrs in price_selectors:
             price_tag = soup.find(tag, attrs)
             if price_tag:
-                price = price_tag.get_text(strip=True)
-                if price:
-                    break
+                price = price_tag.get('content') if tag == 'meta' else price_tag.get_text(strip=True)
+                break
 
-        if name and price:
-            print(f"Parsed HTML data - Name: {name}, Price: {price}")
-            return price, name
+        if price:
+            price = re.sub(r'[^\d.,]', '', price).replace(',', '')
+            try:
+                price = float(price)
+            except ValueError:
+                price = None
         
-        print("No valid data found in HTML.")
+        if name and price:
+            return price, name
         return None
 
-
-    def collect_info(self, url: str) -> Optional[Tuple[str, str]]:
-        print(f"Collecting info from URL: {url}")
+    async def collect_info(self, url: str) -> Optional[Tuple[str, str]]:
         headers = {'User-Agent': self.ua.random}
         response = requests.get(url, headers=headers)
-        json_responses = self.get_json_from_html(response.text)
-        result = self.parse_json(json_responses)
-        if not result:
-            result = self.parse_html(response.text)
-        if result:
-            print(f"Collected info - Name: {result[1]}, Price: {result[0]}")
-        else:
-            print("No data collected.")
-        return result
+        
+        try:
+            json_responses = self.get_json_from_html(response.text)
+            result = self.parse_json(json_responses)
+            if not result:
+                result = self.parse_html(response.text)
+            return result
+        except asyncio.TimeoutError:
+            return None
 
 class ProductParserBot:
     def __init__(self, token):
         print("Initializing bot.")
         self.token = token
-        self.commission_rate = float(os.getenv('COMMISSION_RATE', 0.10))  # Комиссия 10%
-        self.additional_fee = float(os.getenv('ADDITIONAL_FEE', 50))  # Дополнительная наценка в $50
-        self.state = {}  # Словарь для хранения состояния пользователя
-        self.parser = ProductParser()  # Инстанцируем парсер
+        self.commission_rate = os.getenv('COMMISSION_RATE')
+        self.additional_fee = os.getenv('ADDITIONAL_FEE')
+        self.state = {} 
+        self.parser = ProductParser()
         print(f"Bot initialized with token: {self.token}")
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         chat_id = update.message.chat_id
         self.state[chat_id] = 'WAITING_FOR_LINK'
         print(f"User {chat_id} started the bot.")
-        await update.message.reply_text("send me a link to an item.")
+        await update.message.reply_text("Send me a link to an item.")
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         chat_id = update.message.chat_id
@@ -135,12 +149,15 @@ class ProductParserBot:
         if self.state.get(chat_id) == 'WAITING_FOR_LINK':
             if self.is_valid_url(text):
                 print(f"Valid URL received: {text}")
-                await update.message.reply_text("Looking on your link...")
-                product_info = self.parser.collect_info(text)
+                await update.message.reply_text("Looking at your link...")
+                try:
+                    product_info = await asyncio.wait_for(self.parser.collect_info(text), timeout=15.0)
+                except asyncio.TimeoutError:
+                    product_info = None
+
                 if product_info:
                     price, name = product_info
                     try:
-                        # Проверяем тип цены и преобразуем в float
                         if isinstance(price, str):
                             price_float = float(price.replace(',', '').replace('$', '').strip())
                         elif isinstance(price, (int, float)):
@@ -156,7 +173,6 @@ class ProductParserBot:
                     await update.message.reply_text(response)
                 else:
                     print("Price not found. Asking for currency.")
-                    # Если парсинг не удался, предлагаем выбрать валюту
                     self.state[chat_id] = 'WAITING_FOR_CURRENCY'
                     currency_keyboard = [
                         [InlineKeyboardButton("USD", callback_data='USD')],
@@ -177,7 +193,7 @@ class ProductParserBot:
                 response = (f"Our price: {price_with_commission} {currency}")
                 print(f"Sending response: {response}")
                 await update.message.reply_text(response)
-                self.state[chat_id] = 'WAITING_FOR_LINK'  # Сбрасываем состояние
+                self.state[chat_id] = 'WAITING_FOR_LINK'
             except ValueError:
                 print("Invalid price input.")
                 await update.message.reply_text("Please, specify a correct price.")
@@ -186,40 +202,33 @@ class ProductParserBot:
         query = update.callback_query
         chat_id = query.message.chat_id
         currency = query.data
-        context.user_data['currency'] = currency  # Сохраняем выбранную валюту
+        context.user_data['currency'] = currency
         print(f"User {chat_id} selected currency: {currency}")
-        self.state[chat_id] = 'WAITING_FOR_PRICE'  # Переключаем состояние
+        self.state[chat_id] = 'WAITING_FOR_PRICE'
         await query.message.reply_text(f"You choose {currency}. please, enter price in this currency.")
 
     def is_valid_url(self, url):
-        pattern = re.compile(r'^(?:http|ftp)s?://'  # http:// или https://
-                             r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # домен
-                             r'localhost|'  # локалхост
-                             r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|'  # IP-адрес
-                             r'\[?[A-F0-9]*:[A-F0-9:]+\]?)'  # IPv6-адрес
-                             r'(?::\d+)?'  # необязательный порт
+        pattern = re.compile(r'^(?:http|ftp)s?://' 
+                             r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'
+                             r'localhost|'
+                             r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|' 
+                             r'\[?[A-F0-9]*:[A-F0-9:]+\]?)'
+                             r'(?::\d+)?'
                              r'(?:/?|[/?]\S+)$', re.IGNORECASE)
         return re.match(pattern, url) is not None
 
-    def calculate_price(self, price):
-        price_with_commission = price * (1 + self.commission_rate)
-        final_price = price_with_commission + self.additional_fee
-        print(f"Calculated price: {final_price}")
-        return round(final_price, 2)  # Округляем до двух знаков после запятой
+    def calculate_price(self, price: float) -> float:
+        return round(price * (1 + self.commission_rate) + self.additional_fee, 2)
 
 if __name__ == '__main__':
-    token = os.getenv('TOKEN')
-    bot = ProductParserBot(token)
+    bot_token = os.getenv('TOKEN')
+    bot = ProductParserBot(bot_token)
+    
+    application = ApplicationBuilder().token(bot_token).build()
 
-    app = ApplicationBuilder().token(token).build()
-
-    start_handler = CommandHandler('start', bot.start)
-    message_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message)
-    currency_handler = CallbackQueryHandler(bot.handle_currency_selection)
-
-    app.add_handler(start_handler)
-    app.add_handler(message_handler)
-    app.add_handler(currency_handler)
+    application.add_handler(CommandHandler("start", bot.start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
+    application.add_handler(CallbackQueryHandler(bot.handle_currency_selection))
 
     print("Bot started...")
-    app.run_polling()
+    application.run_polling()

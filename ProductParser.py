@@ -1,54 +1,58 @@
-from fake_useragent import UserAgent
+#ok#https://faworldentertainment.com/collections/bottoms/products/salt-and-pepper-canvas-double-knee-pant
+#ok#https://shop.palaceskateboards.com/products/a7oh8xvpjvqf
+#неправильная цена#https://www.asos.com/asos-design/asos-design-fine-knit-boat-neck-top-in-cream/prd/205945056#colourWayId-205945063
+#ok#https://www.grailed.com/listings/67108758-arc-teryx-x-streetwear-x-vintage-vintage-hat-arcteryx-cap-outdoor-gore-tex-arcteryx?g_aidx=Listing_by_heat_production&g_aqid=02fab20a807c337cc1a14ed9de6d2154
+#не дает ничего выгрузить#https://stockx.com/air-jordan-4-retro-white-thunder?size=4
+#не дает ничего выгрузить#https://www.farfetch.com/nl/shopping/men/palm-angels-hermosa-item-25038217.aspx
+#ok#https://shop.doverstreetmarket.com/collections/comme-des-garcons-play/products/play-unisex-parka-1-carry-over-ax-t344-051-1
+#не дает ничего выгрузить#https://www.ebay.com/itm/126523570030?_nkw=fuckingawesome+t+shirt&itmmeta=01J7AT6Q804YB77VR8C1EGQTXX&hash=item1d7564776e:g:S~cAAOSwFUBmZ4b8&itmprp=enc%3AAQAJAAAA8HoV3kP08IDx%2BKZ9MfhVJKnQqNnglOE7vrjZDWo73ZBuvjZPZ6Ek9rmfm9giPGiBO9D2FlDJzpvQ3OL9UWVt4DEUrR73ycQsFsuc9CfidOpLNAQDn5eTkIDJ%2FEwl8EBbBYchgWkFArjF22Dw%2FybvPqVMMgzM1hyGIVfvQSK3HUeVZhlT9zoRO14iy%2BhRKbugMNTTsEcHyGisNoMgGZGvDEah%2FTWL2ks61ObEkfxjWdsEFSdgOQYni4MevdQx8rdg0XQHSCBsmKRH0acnX9N%2Fv4yjHiNXlQcXx39eSes%2BJaahO8ZrZ0pXJcvgM0D5824cAA%3D%3D%7Ctkp%3ABk9SR4r0mtq6ZA
+#not ok#https://www.carhartt-wip.com/en/men-featured-9/og-detroit-jacket-winter-malbec-black-aged-canvas-964_1
+#ok#https://itkkit.com/catalog/product/246455_thisisneverthat-regular-jeans-red/
+#не дает цену#https://www.drmartens.com/eu/en_eu/sinclair-milled-nappa-leather-platform-boots-black/p/22564001
+#ok#https://fuckthepopulation.com/collections/shop/products/made-in-hell-leather-puffer-coatwhite
+#не дает цену#https://dimemtl.com/collections/dime-fall-24/products/fa24-coverstitch-sherpa-fleece-military-brown
+#ok#https://kith.com/collections/mens-footwear/products/aaih3432
+
 import requests
-import json
+from bs4 import BeautifulSoup
+from fake_useragent import UserAgent
 import re
-from typing import Tuple, Optional
 
-class ProductParser:
-    def __init__(self):
-        self.ua = UserAgent()
+ua = UserAgent()
+headers = {'User-Agent': ua.random}
+url = "https://dimemtl.com/collections/dime-fall-24/products/fa24-coverstitch-sherpa-fleece-military-brown"
 
-    def get_json_from_html(self, html: str) -> list:
-        """Ищем и возвращаем JSON-данные, встроенные в HTML."""
-        json_data = []
-        json_matches = re.findall(r'({.*?})', html)
-        for match in json_matches:
-            try:
-                json_data.append(json.loads(match))
-            except json.JSONDecodeError:
-                continue
-        return json_data
+try:
+    response = requests.get(url, headers=headers, timeout=15)
 
-    def parse_json(self, json_data: list) -> Optional[Tuple[str, str]]:
-        """Ищем цену и название товара в JSON-данных."""
-        for item in json_data:
-            if isinstance(item, dict):
-                price = item.get('price', None)
-                name = item.get('name', None)
-                if price and name:
-                    return price, name
-            elif isinstance(item, list):
-                for sub_item in item:
-                    if isinstance(sub_item, dict):
-                        result = self.parse_json([sub_item])
-                        if result:
-                            return result
-        return None
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-    def parse_html(self, html: str) -> Optional[Tuple[str, str]]:
-        """Ищем цену и название товара в HTML-коде."""
-        price_match = re.search(r'"price":"(\d+\.\d+)"', html)
-        name_match = re.search(r'"name":"(.*?)"', html)
-        if price_match and name_match:
-            return price_match.group(1), name_match.group(1)
-        return None
+        product_name_tag = soup.find('h1')
+        if product_name_tag:
+            product_name = product_name_tag.get_text(strip=True)
+        else:
+            product_name = "Name not found"
+            print("Cannot found name in headers.")
 
-    def collect_info(self, url: str) -> Optional[Tuple[str, str]]:
-        """Основная функция сбора информации."""
-        headers = {'User-Agent': self.ua.random}
-        response = requests.get(url, headers=headers)
-        json_responses = self.get_json_from_html(response.text)
-        result = self.parse_json(json_responses)
-        if not result:
-            result = self.parse_html(response.text)
-        return result
+        currency_symbols = r'£|\$|€|¥'
+        product_price_tag = soup.find('span', string=lambda text: re.search(currency_symbols, text) if text else False)
+        
+        if product_price_tag:
+            product_price_match = re.search(r'(\£|\$|€|¥)\s?\d+\.?\d*', product_price_tag.get_text(strip=True))
+            if product_price_match:
+                product_price = product_price_match.group(0)
+            else:
+                product_price = "Price not found"
+                print("Cannot found price in headers.")
+        else:
+            product_price = "Price not found"
+            print("Cannot found price in headers.")
+
+        # Выводим результаты в консоль
+        print(f"Name: {product_name}")
+        print(f"Price: {product_price}")
+    else:
+        print("Cannot GET. ERROR:", response.status_code)
+except requests.exceptions.Timeout:
+    print("Timeout15sec(yoox??).")
