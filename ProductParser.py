@@ -41,14 +41,17 @@ class ProductParser:
 
     def parse_product_price(self):
         if self.soup:
-            currency_symbols = r'£|\$|€|¥'
+            currency_symbols = r'[£$€¥]'  # Знаки валют
             product_price_tag = self.soup.find('span', string=lambda text: re.search(currency_symbols, text) if text else False)
             
             if product_price_tag:
                 price_text = product_price_tag.get_text(strip=True)
-                numeric_price = re.search(r'(\d+(\.\d+)?)', price_text)
+                # Удаляем лишние пробелы и символы перед/после цены
+                price_text = re.sub(r'\s+', '', price_text)
+                # Регулярное выражение для извлечения знака валюты и числа, включая запятые для разделения тысяч
+                numeric_price = re.search(rf'({currency_symbols}\s*\d{{1,3}}(,\d{{3}})*(\.\d+)?|\d{{1,3}}(,\d{{3}})*(\.\d+)?\s*{currency_symbols})', price_text)
                 if numeric_price:
-                    self.product_price = int(float(numeric_price.group(0)))
+                    self.product_price = numeric_price.group(0).strip()  # Включает валюту и цену
                 else:
                     self.product_price = "Price not found"
                     logging.warning("Cannot extract price.")
@@ -56,6 +59,7 @@ class ProductParser:
                 self.product_price = "Price not found"
                 logging.warning("Cannot find price element.")
         else:
+            self.product_price = "Price not found"
             logging.error("No content to parse for product price.")
 
 
@@ -94,7 +98,8 @@ class ProductParser:
             'https://www.drmartens.com/eu/en_eu/sinclair-milled-nappa-leather-platform-boots-black/p/22564001',
             'https://fuckthepopulation.com/collections/shop/products/made-in-hell-leather-puffer-coatwhite',
             'https://dimemtl.com/collections/dime-fall-24/products/fa24-coverstitch-sherpa-fleece-military-brown',
-            'https://kith.com/collections/mens-footwear/products/aaih3432'
+            'https://kith.com/collections/mens-footwear/products/aaih3432',
+            'https://shop-jp.doverstreetmarket.com/collections/asics/products/asics-ub8-s-gt-2160-400'
         ]
         
         for url in urls:
@@ -106,8 +111,8 @@ class ProductParser:
             logging.info(f"Price: {product_info['price']}")
             logging.info('-' * 40)
 
-#if __name__ == "__main__":
-    #ProductParser.test()
+if __name__ == "__main__":
+    ProductParser.test()
 
     #url = "https://faworldentertainment.com/collections/bottoms/products/salt-and-pepper-canvas-double-knee-pant"
     #parser = ProductParser(url)
