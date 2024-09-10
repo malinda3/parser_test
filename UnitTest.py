@@ -1,11 +1,11 @@
 import pytest
 from bs4 import BeautifulSoup
-from ProductParser import ProductParser
 import requests
 from unittest.mock import Mock, patch
 
+from ProductParser import ProductParser
+
 def test_fetch_page_failure(mocker):
-    # Simulating a failed HTTP request
     mocker.patch('requests.get', side_effect=Exception("Network Error"))
     
     parser = ProductParser("http://example.com")
