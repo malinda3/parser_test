@@ -2,6 +2,7 @@ import pytest
 from bs4 import BeautifulSoup
 from ProductParser import ProductParser
 import requests
+from unittest.mock import Mock, patch
 
 def test_fetch_page_failure(mocker):
     # Simulating a failed HTTP request
@@ -486,3 +487,345 @@ def test_parse_product_name_with_html_entities_in_name():
     parser.parse_product_name()
     
     assert parser.product_name == "Product & Name"
+
+##
+
+def test_fetch_page_success(mocker):
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text = "<html><head><title>Test</title></head><body><h1>Test Product</h1><span>$19.99</span></body></html>"
+    mocker.patch('requests.get', return_value=mock_response)
+
+    parser = ProductParser('http://example.com')
+    parser.fetch_page()
+
+    assert parser.soup is not None
+
+def test_fetch_page_http_error(mocker):
+    mocker.patch('requests.get', side_effect=requests.exceptions.HTTPError("404 Not Found"))
+    
+    parser = ProductParser('http://example.com')
+    parser.fetch_page()
+
+    assert parser.soup is None
+
+def test_fetch_page_timeout(mocker):
+    mocker.patch('requests.get', side_effect=requests.exceptions.Timeout)
+    
+    parser = ProductParser('http://example.com')
+    parser.fetch_page()
+
+    assert parser.soup is None
+
+def test_fetch_page_generic_exception(mocker):
+    mocker.patch('requests.get', side_effect=Exception("Generic error"))
+    
+    parser = ProductParser('http://example.com')
+    parser.fetch_page()
+
+    assert parser.soup is None
+
+def test_parse_product_name_success(mocker):
+    html = "<html><body><h1>Test Product</h1></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_name()
+
+    assert parser.product_name == "Test Product"
+
+def test_parse_product_name_not_found(mocker):
+    html = "<html><body><h2>No Product Name</h2></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_name()
+
+    assert parser.product_name == "Name not found"
+
+def test_parse_product_price_success(mocker):
+    html = "<html><body><span>$19.99</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "$19.99"
+
+def test_parse_product_price_with_whitespace(mocker):
+    html = "<html><body><span>  $19.99   </span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "$19.99"
+
+def test_parse_product_price_with_comma(mocker):
+    html = "<html><body><span>$1,999.99</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "$1,999.99"
+
+def test_parse_product_price_no_currency_symbol(mocker):
+    html = "<html><body><span>1999.99</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "Price not found"
+
+def test_parse_product_price_no_price_element(mocker):
+    html = "<html><body><h1>Test Product</h1></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "Price not found"
+
+def test_parse_product_price_multiple_prices(mocker):
+    html = "<html><body><span>$19.99</span><span>$29.99</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "$19.99"
+
+def test_get_product_info(mocker):
+    html = "<html><head><title>Test</title></head><body><h1>Test Product</h1><span>$19.99</span></body></html>"
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mocker.patch('requests.get', return_value=mock_response)
+
+    parser = ProductParser('http://example.com')
+    product_info = parser.get_product_info()
+
+    assert product_info['name'] == "Test Product"
+    assert product_info['price'] == "$19.99"
+
+def test_get_product_info_no_name(mocker):
+    html = "<html><body><span>$19.99</span></body></html>"
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mocker.patch('requests.get', return_value=mock_response)
+
+    parser = ProductParser('http://example.com')
+    product_info = parser.get_product_info()
+
+    assert product_info['name'] == "Name not found"
+    assert product_info['price'] == "$19.99"
+
+def test_get_product_info_no_price(mocker):
+    html = "<html><body><h1>Test Product</h1></body></html>"
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mocker.patch('requests.get', return_value=mock_response)
+
+    parser = ProductParser('http://example.com')
+    product_info = parser.get_product_info()
+
+    assert product_info['name'] == "Test Product"
+    assert product_info['price'] == "Price not found"
+
+def test_get_product_info_no_name_no_price(mocker):
+    html = "<html><body></body></html>"
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mocker.patch('requests.get', return_value=mock_response)
+
+    parser = ProductParser('http://example.com')
+    product_info = parser.get_product_info()
+
+    assert product_info['name'] == "Name not found"
+    assert product_info['price'] == "Price not found"
+
+def test_fetch_page_connection_error(mocker):
+    mocker.patch('requests.get', side_effect=requests.exceptions.ConnectionError)
+    
+    parser = ProductParser('http://example.com')
+    parser.fetch_page()
+
+    assert parser.soup is None
+
+def test_parse_product_name_empty_page(mocker):
+    html = ""
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_name()
+
+    assert parser.product_name == "Name not found"
+
+def test_parse_product_price_empty_page(mocker):
+    html = ""
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "Price not found"
+
+def test_parse_product_price_with_html_entities(mocker):
+    html = "<html><body><span>&pound;19.99</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "£19.99"
+
+def test_parse_product_price_with_currency_code(mocker):
+    html = "<html><body><span>USD 19.99</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "USD 19.99"
+
+def test_parse_product_price_with_unusual_format(mocker):
+    html = "<html><body><span>19,99€</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "19,99€"
+
+def test_parse_product_price_with_alternate_currency_symbol(mocker):
+    html = "<html><body><span>¥19.99</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "¥19.99"
+
+def test_parse_product_price_with_text_around(mocker):
+    html = "<html><body><span>Only $19.99 today!</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "$19.99"
+
+def test_parse_product_name_with_unicode(mocker):
+    html = "<html><body><h1>Тестовый продукт</h1></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_name()
+
+    assert parser.product_name == "Тестовый продукт"
+
+def test_parse_product_price_with_unicode(mocker):
+    html = "<html><body><span>19,99€</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "19,99€"
+
+def test_parse_product_name_in_meta_tag(mocker):
+    html = '<html><head><meta name="og:title" content="Test Product"></head></html>'
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_name()
+
+    assert parser.product_name == "Test Product"
+
+def test_parse_product_name_in_title_tag(mocker):
+    html = "<html><head><title>Test Product</title></head></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_name()
+
+    assert parser.product_name == "Test Product"
+
+def test_parse_product_name_from_div(mocker):
+    html = '<html><body><div class="product-name">Test Product</div></body></html>'
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_name()
+
+    assert parser.product_name == "Test Product"
+
+def test_parse_product_price_with_text_in_span(mocker):
+    html = '<html><body><span class="price">$19.99</span></body></html>'
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "$19.99"
+
+def test_parse_product_price_with_multiple_currency_symbols(mocker):
+    html = "<html><body><span>19,99€</span><span>$19.99</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "19,99€"
+
+def test_parse_product_price_with_non_standard_delimiters(mocker):
+    html = "<html><body><span>19.999,99 €</span></body></html>"
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "19.999,99 €"
+
+def test_get_product_info_with_complex_html(mocker):
+    html = """
+    <html><head><title>Test Product</title></head>
+    <body><h1>Test Product</h1>
+    <span>$19.99</span>
+    <div class="price">$29.99</div>
+    <span>Special Price: $39.99</span>
+    </body></html>
+    """
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mocker.patch('requests.get', return_value=mock_response)
+
+    parser = ProductParser('http://example.com')
+    product_info = parser.get_product_info()
+
+    assert product_info['name'] == "Test Product"
+    assert product_info['price'] == "$19.99"
+
+def test_parse_product_name_with_nested_tags(mocker):
+    html = '<html><body><div class="product-name"><h1>Test <span>Product</span></h1></div></body></html>'
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_name()
+
+    assert parser.product_name == "Test Product"
+
+def test_parse_product_price_with_nested_tags(mocker):
+    html = '<html><body><div class="price"><span>$19.99</span></div></body></html>'
+    parser = ProductParser('http://example.com')
+    parser.soup = BeautifulSoup(html, 'html.parser')
+
+    parser.parse_product_price()
+
+    assert parser.product_price == "$19.99"

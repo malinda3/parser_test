@@ -30,28 +30,39 @@ class ProductParser:
 
     def parse_product_name(self):
         if self.soup:
-            product_name_tag = self.soup.find('h1')
-            if product_name_tag:
-                self.product_name = product_name_tag.get_text(strip=True)
-            else:
-                self.product_name = "Name not found"
-                logging.warning("Cannot find product name.")
+            search_tags = ['h1', 'h2', 'h3', 'title', 'div', 'span']
+            search_classes = ['product-title', 'product-name', 'name', 'title']
+            
+            for tag in search_tags:
+                product_name_tag = self.soup.find(tag)
+                if product_name_tag:
+                    self.product_name = product_name_tag.get_text(strip=True)
+                    return
+            
+            for cls in search_classes:
+                product_name_tag = self.soup.find(class_=cls)
+                if product_name_tag:
+                    self.product_name = product_name_tag.get_text(strip=True)
+                    return
+
+            self.product_name = "Name not found"
+            logging.warning("Cannot find product name.")
         else:
             logging.error("No content to parse for product name.")
 
     def parse_product_price(self):
         if self.soup:
-            currency_symbols = r'[£$€¥]'  # Знаки валют
+            currency_symbols = r'[£$€¥₹]'
             product_price_tag = self.soup.find('span', string=lambda text: re.search(currency_symbols, text) if text else False)
             
             if product_price_tag:
                 price_text = product_price_tag.get_text(strip=True)
-                # Удаляем лишние пробелы и символы перед/после цены
+                price_text = re.sub(r'[^\d\.,£$€¥₹]', '', price_text)
                 price_text = re.sub(r'\s+', '', price_text)
-                # Регулярное выражение для извлечения знака валюты и числа, включая запятые для разделения тысяч
-                numeric_price = re.search(rf'({currency_symbols}\s*\d{{1,3}}(,\d{{3}})*(\.\d+)?|\d{{1,3}}(,\d{{3}})*(\.\d+)?\s*{currency_symbols})', price_text)
+
+                numeric_price = re.search(rf'({currency_symbols}\d{{1,3}}(,\d{{3}})*(\.\d+)?|\d{{1,3}}(,\d{{3}})*(\.\d+)?\s*{currency_symbols})', price_text)
                 if numeric_price:
-                    self.product_price = numeric_price.group(0).strip()  # Включает валюту и цену
+                    self.product_price = numeric_price.group(0).strip()
                 else:
                     self.product_price = "Price not found"
                     logging.warning("Cannot extract price.")
