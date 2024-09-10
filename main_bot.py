@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 class BotHandler:
-    def __init__(self, token, commission_rate=float(os.getenv('COMMISSION_RATE', 0.1)), additional_fee=float(os.getenv('ADDITIONAL_FEE', 50))):
+    def __init__(self, token, commission_rate=float(os.getenv('COMMISSION_RATE')), additional_fee=float(os.getenv('ADDITIONAL_FEE'))):
         self.token = token
         self.application = Application.builder().token(self.token).build()
         self.commission_rate = commission_rate
@@ -42,7 +42,7 @@ class BotHandler:
                 final_price = manual_price * (1 + self.commission_rate) + self.additional_fee
                 await update.message.reply_text(
                     f"Manual Price: {manual_price}\n"
-                    f"Final Price with Commission and Fee: {final_price:.2f}"
+                    f"Final Price: {final_price:.2f}"
                 )
                 del self.user_data[user.id]
             else:
@@ -66,7 +66,7 @@ class BotHandler:
         self.application.add_handler(CommandHandler("start", self.start))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
-        logging.info("Bot is starting...")
+        logging.info("Bot starting...")
         self.application.run_polling()
 
 if __name__ == "__main__":
