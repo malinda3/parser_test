@@ -1,5 +1,5 @@
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 import logging
 from ProductParser import ProductParser 
 import os
@@ -19,7 +19,32 @@ class BotHandler:
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.message.from_user
         logging.info(f"User {user.id} started the bot.")
-        await update.message.reply_text('Send me a product link.')
+
+        # Создаем кнопки меню
+        keyboard = [
+            [InlineKeyboardButton("Оформить заказ", callback_data='order')],
+            [InlineKeyboardButton("Мои заказы", callback_data='my_orders')],
+            [InlineKeyboardButton("FAQ", url="https://rusale.shop/individual")],
+            [InlineKeyboardButton("Поддержка", url="https://t.me/rusalemngr")],
+            [InlineKeyboardButton("Наш канал", url="https://t.me/russsale")],
+            [InlineKeyboardButton("Отзывы", url="https://t.me/russsale/1309")]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text('Выберите опцию:', reply_markup=reply_markup)
+
+    async def handle_menu_selection(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        query = update.callback_query
+        await query.answer()
+
+        if query.data == 'order':
+            await query.message.reply_text('Пожалуйста, отправьте ссылку на продукт.')
+            return
+        
+        elif query.data == 'my_orders':
+            # Здесь можно добавить обработку для просмотра заказов
+            await query.message.reply_text('Здесь будут ваши заказы.')
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_message = update.message.text
@@ -64,6 +89,7 @@ class BotHandler:
 
     def run(self):
         self.application.add_handler(CommandHandler("start", self.start))
+        self.application.add_handler(CallbackQueryHandler(self.handle_menu_selection))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
         logging.info("Bot starting...")
