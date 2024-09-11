@@ -1,12 +1,43 @@
+import os
+import logging
+from logging.handlers import RotatingFileHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
-import logging
 from ProductParser import ProductParser
-import os
 from dotenv import load_dotenv
 import re
+from datetime import datetime
 
-logging.basicConfig(level=logging.INFO)
+# Получение текущей даты
+current_date = datetime.now().strftime('%Y-%m-%d')
+
+# Создание папки для логов с текущей датой
+log_directory = f'logs/{current_date}'
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory)
+
+# Настройка логирования
+log_file = f'{log_directory}/bot.log'
+log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+# Настройка основной конфигурации логирования
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Удаление всех существующих обработчиков (если есть)
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+# Добавление обработчика для записи в файл
+file_handler = RotatingFileHandler(log_file, maxBytes=10**6, backupCount=5)
+file_handler.setFormatter(logging.Formatter(log_format))
+logger.addHandler(file_handler)
+
+# Добавление обработчика для вывода в консоль
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter(log_format))
+logger.addHandler(console_handler)
+
 load_dotenv()
 
 class BotHandler:
@@ -74,6 +105,14 @@ class BotHandler:
                                     f"Ссылка на товар: {url}\n"
                                     f"Для оформления заказа перешлите это сообщение: https://t.me/rusalemngr")
                         await query.message.edit_text(response)
+                        
+                        # Логирование информации о новом заказе
+                        logging.info(f"New order created by User {user_id}: "
+                                     f"Name: {self.user_data[user_id]['name']}, "
+                                     f"Price: {self.user_data[user_id]['price']} {selected_currency}, "
+                                     f"Final Price: {final_price:.2f} RUB, "
+                                     f"URL: {url}")
+
                         del self.user_data[user_id]
                     except ValueError as e:
                         logging.error(f"ValueError: {e}")
@@ -106,6 +145,13 @@ class BotHandler:
                 if product_info['price'] != "Price not found":
                     self.user_data[user.id] = {'name': product_info['name'], 'price': product_info['price'], 'url': user_message}
                     await self.ask_for_currency(update)
+
+                    # Логирование информации о новом заказе
+                    logging.info(f"New order created by User {user.id}: "
+                                 f"Name: {product_info['name']}, "
+                                 f"Price: {product_info['price']}, "
+                                 f"URL: {user_message}")
+
                 else:
                     self.user_data[user.id] = {'name': product_info['name'], 'url': user_message}
                     await update.message.reply_text('Не получается найти цену автоматически. Пожалуйста, введите цену с сайта. \nДалее вам будет предложено выбрать валюту, для подсчета примерной стоимости:')
@@ -124,13 +170,8 @@ class BotHandler:
                 await update.message.reply_text(f'Произошла ошибка: {str(e)}')
 
     async def ask_for_currency(self, update: Update) -> None:
-        keyboard = [
-            [InlineKeyboardButton("USD", callback_data='currency_usd')],
-            [InlineKeyboardButton("EUR", callback_data='currency_eur')],
-            [InlineKeyboardButton("GBP", callback_data='currency_gbp')],
-            [InlineKeyboardButton("JPY", callback_data='currency_jpy')],
-            [InlineKeyboardButton("CNY", callback_data='currency_cny')]
-        ]
+        buttons = [InlineKeyboardButton(curr, callback_data=f'currency_{curr.lower()}') for curr in self.currencies.keys()]
+        keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text('Выберите валюту:', reply_markup=reply_markup)
 
