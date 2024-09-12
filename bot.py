@@ -21,21 +21,18 @@ log_file = f'{log_directory}/bot.log'
 order_log_file = f'{order_log_directory}/orders.log'
 log_format = '%(asctime)s - %(levelname)s - %(message)s'
 
-# Общий логгер
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)  # Устанавливаем уровень логирования для всего приложения
+logger.setLevel(logging.DEBUG)
 
-# Обработчик для записи в файл
 file_handler = RotatingFileHandler(log_file, maxBytes=10**6, backupCount=5)
 file_handler.setFormatter(logging.Formatter(log_format))
-file_handler.setLevel(logging.WARNING)  # Записываем предупреждения и ошибки в основной лог-файл
+file_handler.setLevel(logging.WARNING) 
 logger.addHandler(file_handler)
 
-# Логгер для заказов
 order_logger = logging.getLogger('orders')
 order_logger.setLevel(logging.INFO)
 order_file_handler = RotatingFileHandler(order_log_file, maxBytes=10**6, backupCount=5)
-order_file_handler.setFormatter(logging.Formatter(log_format))  # Формат с временной меткой и уровнем INFO
+order_file_handler.setFormatter(logging.Formatter(log_format))
 order_logger.addHandler(order_file_handler)
 
 load_dotenv()
@@ -101,7 +98,6 @@ class BotHandler:
                                     f"Для оформления заказа перешлите это сообщение: https://t.me/rusalemngr")
                         await query.message.edit_text(response)
                         
-                        # Логирование информации о формировании заказа
                         order_logger.info(f"Order created by User {user_id}: Name: {self.user_data[user_id]['name']}, "
                                     f"Price: {self.user_data[user_id]['price']} {selected_currency}, "
                                     f"Final Price: {final_price:.0f} RUB")
@@ -139,7 +135,6 @@ class BotHandler:
                     self.user_data[user.id] = {'name': product_info['name'], 'price': product_info['price'], 'url': user_message}
                     await self.ask_for_currency(update)
 
-                    # Логирование информации о создании заказа
                     order_logger.info(f"New order created by User {user.id}: Name: {product_info['name']}, "
                                 f"Price: {product_info['price']}, URL: {user_message}")
 
