@@ -59,6 +59,7 @@ class BotHandler:
         keyboard = [
             [InlineKeyboardButton("Оформить заказ", callback_data='order')],
             [InlineKeyboardButton("FAQ", url="https://rusale.shop/individual")],
+            [InlineKeyboardButton("Cписок проверенных сайтов", url="https://rusale.shop/trustworthy")],
             [InlineKeyboardButton("Поддержка", url="https://t.me/rusalemngr")],
             [InlineKeyboardButton("Наш канал", url="https://t.me/russsale")],
             [InlineKeyboardButton("Отзывы", url="https://t.me/russsale/1309")]
