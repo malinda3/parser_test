@@ -89,7 +89,7 @@ class BotHandler:
                     try:
                         price = float(re.sub(r'[^\d.]+', '', self.user_data[user_id]['price']))
                         currency_rate = self.currencies[selected_currency]
-                        final_price = price * currency_rate * (1 + self.commission_rate) + self.additional_fee
+                        final_price = price * currency_rate * (1 + self.commission_rate)
 
                         url = self.user_data[user_id].get('url', 'Не указана')
                         response = (f"Название: {self.user_data[user_id]['name']}\n"
