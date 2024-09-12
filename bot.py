@@ -11,20 +11,32 @@ from datetime import datetime
 current_date = datetime.now().strftime('%Y-%m-%d')
 
 log_directory = f'logs/{current_date}'
+order_log_directory = f'{log_directory}/orders'
 if not os.path.exists(log_directory):
     os.makedirs(log_directory)
+if not os.path.exists(order_log_directory):
+    os.makedirs(order_log_directory)
 
 log_file = f'{log_directory}/bot.log'
-log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+order_log_file = f'{order_log_directory}/orders.log'
+log_format = '%(asctime)s - %(levelname)s - %(message)s'
+
+# Общий логгер
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)  # Устанавливаем уровень логирования для всего приложения
+
+# Обработчик для записи в файл
 file_handler = RotatingFileHandler(log_file, maxBytes=10**6, backupCount=5)
 file_handler.setFormatter(logging.Formatter(log_format))
+file_handler.setLevel(logging.WARNING)  # Записываем предупреждения и ошибки в основной лог-файл
 logger.addHandler(file_handler)
 
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter(log_format))
-logger.addHandler(console_handler)
+# Логгер для заказов
+order_logger = logging.getLogger('orders')
+order_logger.setLevel(logging.INFO)
+order_file_handler = RotatingFileHandler(order_log_file, maxBytes=10**6, backupCount=5)
+order_file_handler.setFormatter(logging.Formatter(log_format))  # Формат с временной меткой и уровнем INFO
+order_logger.addHandler(order_file_handler)
 
 load_dotenv()
 
@@ -45,7 +57,7 @@ class BotHandler:
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.message.from_user
-        logging.info(f"User {user.id} started the bot.")
+        logger.info(f"User {user.id} started the bot.")
 
         keyboard = [
             [InlineKeyboardButton("Оформить заказ", callback_data='order')],
@@ -67,13 +79,9 @@ class BotHandler:
                 keyboard = [
                     [InlineKeyboardButton("Ввести ссылку", callback_data='input_link')],
                     [InlineKeyboardButton("Ввести цену", callback_data='input_price')],
-                    [InlineKeyboardButton("Назад", callback_data='back_to_menu')]
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.message.edit_text('Выберите вариант ввода:', reply_markup=reply_markup)
-
-            elif query.data == 'back_to_menu':
-                await self.start(update, context)
 
             elif query.data.startswith('currency_'):
                 selected_currency = query.data.split('_')[1].upper()
@@ -88,21 +96,20 @@ class BotHandler:
                         url = self.user_data[user_id].get('url', 'Не указана')
                         response = (f"Название: {self.user_data[user_id]['name']}\n"
                                     f"Цена на сайте: {self.user_data[user_id]['price']} {selected_currency}\n"
-                                    f"Примерная цена: {final_price:.2f} RUB\n"
+                                    f"Цена без доставки: {final_price:.0f} RUB\n"
                                     f"Ссылка на товар: {url}\n"
                                     f"Для оформления заказа перешлите это сообщение: https://t.me/rusalemngr")
                         await query.message.edit_text(response)
                         
-                        logging.info(f"New order created by User {user_id}: "
-                                     f"Name: {self.user_data[user_id]['name']}, "
-                                     f"Price: {self.user_data[user_id]['price']} {selected_currency}, "
-                                     f"Final Price: {final_price:.2f} RUB, "
-                                     f"URL: {url}")
+                        # Логирование информации о формировании заказа
+                        order_logger.info(f"Order created by User {user_id}: Name: {self.user_data[user_id]['name']}, "
+                                    f"Price: {self.user_data[user_id]['price']} {selected_currency}, "
+                                    f"Final Price: {final_price:.0f} RUB")
 
                         del self.user_data[user_id]
                     except ValueError as e:
-                        logging.error(f"ValueError: {e}")
-                        await query.message.reply_text(f'Произошла ошибка')
+                        logger.error(f"ValueError: {e}")
+                        await query.message.reply_text(f'Произошла ошибка при обработке цены. Пожалуйста, попробуйте снова.')
                 else:
                     await query.message.reply_text('Что-то пошло не так, попробуйте снова.')
 
@@ -114,32 +121,31 @@ class BotHandler:
                 await query.message.reply_text('Введите цену с сайта. \nДалее вам будет предложено выбрать валюту, для подсчета примерной стоимости:')
 
         except Exception as e:
-            logging.error(f"Error handling menu selection: {e}")
+            logger.error(f"Error handling menu selection: {e}")
             if query.message:
-                await query.message.reply_text(f'Произошла ошибка')
+                await query.message.reply_text(f'Произошла ошибка. Пожалуйста, попробуйте снова.')
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_message = update.message.text
         user = update.message.from_user
-        logging.info(f"Received message from {user.id}: {user_message}")
+        logger.info(f"Received message from {user.id}: {user_message}")
 
         try:
             if self.is_valid_url(user_message):
-                logging.info(f"Valid URL received: {user_message}")
+                logger.info(f"Valid URL received: {user_message}")
                 product_info = self.get_product_info(user_message)
 
                 if product_info['price'] != "Price not found":
                     self.user_data[user.id] = {'name': product_info['name'], 'price': product_info['price'], 'url': user_message}
                     await self.ask_for_currency(update)
 
-                    logging.info(f"New order created by User {user.id}: "
-                                 f"Name: {product_info['name']}, "
-                                 f"Price: {product_info['price']}, "
-                                 f"URL: {user_message}")
+                    # Логирование информации о создании заказа
+                    order_logger.info(f"New order created by User {user.id}: Name: {product_info['name']}, "
+                                f"Price: {product_info['price']}, URL: {user_message}")
 
                 else:
                     self.user_data[user.id] = {'name': product_info['name'], 'url': user_message}
-                    await update.message.reply_text('Не получается найти цену автоматически. Пожалуйста, введите цену с сайта. \nДалее вам будет предложено выбрать валюту, для подсчета примерной стоимости:')
+                    await update.message.reply_text('Не получается найти цену автоматически.\nПожалуйста, введите цену с сайта. \nДалее вам будет предложено выбрать валюту, для подсчета примерной стоимости:')
             else:
                 if user.id in self.user_data:
                     if self.is_number(user_message):
@@ -150,9 +156,9 @@ class BotHandler:
                 else:
                     await update.message.reply_text('Пожалуйста, отправьте правильную ссылку на товар или введите сумму с сайта.')
         except Exception as e:
-            logging.error(f"Error handling message: {e}")
+            logger.error(f"Error handling message: {e}")
             if update.message:
-                await update.message.reply_text(f'Произошла ошибка')
+                await update.message.reply_text(f'Произошла ошибка. Пожалуйста, попробуйте снова.')
 
     async def ask_for_currency(self, update: Update) -> None:
         buttons = [InlineKeyboardButton(curr, callback_data=f'currency_{curr.lower()}') for curr in self.currencies.keys()]
@@ -176,13 +182,11 @@ class BotHandler:
 
     def run(self):
         self.application.add_handler(CommandHandler("start", self.start))
-        self.application.add_handler(CallbackQueryHandler(self.handle_menu_selection, pattern='^(order|back_to_menu|input_link|input_price|currency_)'))
+        self.application.add_handler(CallbackQueryHandler(self.handle_menu_selection))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
-
-        logging.info("Bot starting...")
         self.application.run_polling()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     bot_token = os.getenv('TOKEN')
-    bot = BotHandler(bot_token)
-    bot.run()
+    bot_handler = BotHandler(token=bot_token)
+    bot_handler.run()
