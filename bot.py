@@ -26,7 +26,7 @@ logger.setLevel(logging.DEBUG)
 
 file_handler = RotatingFileHandler(log_file, maxBytes=10**6, backupCount=5)
 file_handler.setFormatter(logging.Formatter(log_format))
-file_handler.setLevel(logging.WARNING) 
+file_handler.setLevel(logging.WARNING)
 logger.addHandler(file_handler)
 
 order_logger = logging.getLogger('orders')
@@ -38,11 +38,12 @@ order_logger.addHandler(order_file_handler)
 load_dotenv()
 
 class BotHandler:
-    def __init__(self, token, commission_rate=float(os.getenv('COMMISSION_RATE')), additional_fee=float(os.getenv('ADDITIONAL_FEE'))):
+    def __init__(self, token, commission_rate=float(os.getenv('COMMISSION_RATE')), additional_fee=float(os.getenv('ADDITIONAL_FEE')), min_commission=1000):
         self.token = token
         self.application = Application.builder().token(self.token).build()
         self.commission_rate = commission_rate
         self.additional_fee = additional_fee
+        self.min_commission = min_commission
         self.user_data = {}
         self.currencies = {
             'USD': float(os.getenv('usd')),
@@ -84,12 +85,17 @@ class BotHandler:
             elif query.data.startswith('currency_'):
                 selected_currency = query.data.split('_')[1].upper()
                 user_id = query.from_user.id
+                username = query.from_user.username or user_id
 
                 if 'price' in self.user_data.get(user_id, {}):
                     try:
                         price = float(re.sub(r'[^\d.]+', '', self.user_data[user_id]['price']))
                         currency_rate = self.currencies[selected_currency]
                         final_price = price * currency_rate * self.commission_rate
+
+                        # Убедитесь, что минимальная комиссия составляет 1000 рублей
+                        if final_price - price * currency_rate < self.min_commission:
+                            final_price += self.min_commission - (final_price - price * currency_rate)
 
                         url = self.user_data[user_id].get('url', 'Не указана')
                         response = (f"Название: {self.user_data[user_id]['name']}\n"
@@ -98,8 +104,8 @@ class BotHandler:
                                     f"Ссылка на товар: {url}\n"
                                     f"Для оформления заказа перешлите это сообщение: https://t.me/rusalemngr")
                         await query.message.edit_text(response)
-                        
-                        order_logger.info(f"Order created by User {user_id}: Name: {self.user_data[user_id]['name']}, "
+
+                        order_logger.info(f"Order created by User {username}: Name: {self.user_data[user_id]['name']}, "
                                     f"Price: {self.user_data[user_id]['price']} {selected_currency}, "
                                     f"Final Price: {final_price:.0f} RUB")
 
@@ -125,7 +131,8 @@ class BotHandler:
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_message = update.message.text
         user = update.message.from_user
-        logger.info(f"Received message from {user.id}: {user_message}")
+        username = user.username or user.id  # Используем username, если он есть, иначе fallback на user.id
+        logger.info(f"Received message from {username}: {user_message}")
 
         try:
             if self.is_valid_url(user_message):
@@ -136,7 +143,7 @@ class BotHandler:
                     self.user_data[user.id] = {'name': product_info['name'], 'price': product_info['price'], 'url': user_message}
                     await self.ask_for_currency(update)
 
-                    order_logger.info(f"New order created by User {user.id}: Name: {product_info['name']}, "
+                    order_logger.info(f"New order created by User {username}: Name: {product_info['name']}, "
                                 f"Price: {product_info['price']}, URL: {user_message}")
 
                 else:
@@ -182,7 +189,8 @@ class BotHandler:
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
         self.application.run_polling()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    load_dotenv()
     bot_token = os.getenv('TOKEN')
-    bot_handler = BotHandler(token=bot_token)
-    bot_handler.run()
+    handler = BotHandler(bot_token)
+    handler.run()
