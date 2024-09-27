@@ -1,6 +1,6 @@
-name: CI
+name: CI for bot_enterprise
 
-
+# Запускаем при пуше или pull request в ветку bot_enterprise
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-stable
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
