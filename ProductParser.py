@@ -110,7 +110,7 @@ class ProductParser:
             'https://fuckthepopulation.com/collections/shop/products/made-in-hell-leather-puffer-coatwhite',
             'https://dimemtl.com/collections/dime-fall-24/products/fa24-coverstitch-sherpa-fleece-military-brown',
             'https://kith.com/collections/mens-footwear/products/aaih3432',
-            'https://shop-jp.doverstreetmarket.com/collections/asics/products/asics-ub8-s-gt-2160-400'
+            #'https://shop-jp.doverstreetmarket.com/collections/asics/products/asics-ub8-s-gt-2160-400'
         ]
         
         for url in urls:
