@@ -3,13 +3,14 @@ import logging
 from logging.handlers import RotatingFileHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
-from ProductParser import ProductParser
+from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
 from dotenv import load_dotenv
 import re
+import json
+import uuid
 from datetime import datetime
 
 current_date = datetime.now().strftime('%Y-%m-%d')
-
 log_directory = f'logs/{current_date}'
 order_log_directory = f'{log_directory}/orders'
 if not os.path.exists(log_directory):
@@ -52,6 +53,9 @@ class BotHandler:
             'JPY': float(os.getenv('jpy')),
             'CNY': float(os.getenv('cny'))
         }
+        self.kafka_topic = "parsing_requests"
+        self.kafka_result_topic = "parsing_results"
+        self.kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.message.from_user
@@ -82,47 +86,12 @@ class BotHandler:
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.message.edit_text('Выберите вариант ввода:', reply_markup=reply_markup)
 
-            elif query.data.startswith('currency_'):
-                selected_currency = query.data.split('_')[1].upper()
-                user_id = query.from_user.id
-                username = query.from_user.username or user_id
-
-                if 'price' in self.user_data.get(user_id, {}):
-                    try:
-                        price = float(re.sub(r'[^\d.]+', '', self.user_data[user_id]['price']))
-                        currency_rate = self.currencies[selected_currency]
-                        final_price = price * currency_rate * self.commission_rate
-
-                        # Убедитесь, что минимальная комиссия составляет 1000 рублей
-                        if final_price - price * currency_rate < self.min_commission:
-                            final_price += self.min_commission - (final_price - price * currency_rate)
-
-                        url = self.user_data[user_id].get('url', 'Не указана')
-                        response = (f"Название: {self.user_data[user_id]['name']}\n"
-                                    f"Цена на сайте: {self.user_data[user_id]['price']} {selected_currency}\n"
-                                    f"Цена без доставки: {final_price:.0f} RUB\n"
-                                    f"Ссылка на товар: {url}\n"
-                                    f"Для оформления заказа перешлите это сообщение: https://t.me/rusalemngr")
-                        await query.message.edit_text(response)
-
-                        order_logger.info(f"Order created by User {username}: Name: {self.user_data[user_id]['name']}, "
-                                    f"Price: {self.user_data[user_id]['price']} {selected_currency}, "
-                                    f"Final Price: {final_price:.0f} RUB")
-
-                        del self.user_data[user_id]
-                    except ValueError as e:
-                        logger.error(f"ValueError: {e}")
-                        await query.message.reply_text(f'Произошла ошибка при обработке цены. Пожалуйста, попробуйте снова.')
-                else:
-                    await query.message.reply_text('Что-то пошло не так, попробуйте снова.')
-
             elif query.data == 'input_link':
                 await query.message.reply_text('Пожалуйста, отправьте ссылку на товар.')
 
             elif query.data == 'input_price':
                 self.user_data[query.from_user.id] = {'name': 'Manual'}
                 await query.message.reply_text('Введите цену с сайта. \nДалее вам будет предложено выбрать валюту, для подсчета примерной стоимости:')
-
         except Exception as e:
             logger.error(f"Error handling menu selection: {e}")
             if query.message:
@@ -131,57 +100,63 @@ class BotHandler:
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_message = update.message.text
         user = update.message.from_user
-        username = user.username or user.id  # Используем username, если он есть, иначе fallback на user.id
+        username = user.username or user.id
         logger.info(f"Received message from {username}: {user_message}")
 
         try:
             if self.is_valid_url(user_message):
                 logger.info(f"Valid URL received: {user_message}")
-                product_info = self.get_product_info(user_message)
-
-                if product_info['price'] != "Price not found":
-                    self.user_data[user.id] = {'name': product_info['name'], 'price': product_info['price'], 'url': user_message}
-                    await self.ask_for_currency(update)
-
-                    order_logger.info(f"New order created by User {username}: Name: {product_info['name']}, "
-                                f"Price: {product_info['price']}, URL: {user_message}")
-
-                else:
-                    self.user_data[user.id] = {'name': product_info['name'], 'url': user_message}
-                    await update.message.reply_text('Не получается найти цену автоматически.\nПожалуйста, введите цену с сайта. \nДалее вам будет предложено выбрать валюту, для подсчета примерной стоимости:')
+                request_id = await self.send_to_kafka(user.id, username, user_message)
+                await update.message.reply_text(f"Заказ сформирован. Для создания и уточнения деталей передайте ID менеджеру: @rusalemngr\n Ваш ID: {request_id}")
             else:
-                if user.id in self.user_data:
-                    if self.is_number(user_message):
-                        self.user_data[user.id]['price'] = user_message
-                        await self.ask_for_currency(update)
-                    else:
-                        await update.message.reply_text('Пожалуйста, введите корректную цену.')
-                else:
-                    await update.message.reply_text('Пожалуйста, отправьте правильную ссылку на товар или введите сумму с сайта.')
+                await update.message.reply_text('Пожалуйста, отправьте корректную ссылку.')
         except Exception as e:
             logger.error(f"Error handling message: {e}")
             if update.message:
                 await update.message.reply_text(f'Произошла ошибка. Пожалуйста, попробуйте снова.')
 
-    async def ask_for_currency(self, update: Update) -> None:
-        buttons = [InlineKeyboardButton(curr, callback_data=f'currency_{curr.lower()}') for curr in self.currencies.keys()]
-        keyboard = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text('Выберите валюту:', reply_markup=reply_markup)
+    async def send_to_kafka(self, user_id, username, url):
+        producer = AIOKafkaProducer(bootstrap_servers=self.kafka_bootstrap_servers)
+        consumer = AIOKafkaConsumer(
+            self.kafka_result_topic,
+            bootstrap_servers=self.kafka_bootstrap_servers,
+            group_id="bot_group"
+        )
+        await producer.start()
+        await consumer.start()
+
+        try:
+            request_id = str(uuid.uuid4())
+            
+            message = {
+                "request_id": request_id,
+                "user_id": user_id,
+                "username": username,
+                "url": url
+            }
+            
+            await producer.send_and_wait(self.kafka_topic, json.dumps(message).encode("utf-8"))
+            logger.info(f"Message sent to Kafka: {message}")
+            
+            async for msg in consumer:
+                response = json.loads(msg.value.decode('utf-8'))
+                if response.get("request_id") == request_id:
+                    product_info = response.get("product_info", {})
+                    product_name = product_info.get("name", "Неизвестный продукт")
+                    product_price = product_info.get("price", "Неизвестная цена")
+                    
+                    await self.application.bot.send_message(
+                        user_id,
+                        f"Название продукта: {product_name}\nЦена: {product_price}"
+                    )
+                    logger.info(f"Sent product info to user: {product_name} - {product_price}")
+                    return request_id
+        finally:
+            await producer.stop()
+            await consumer.stop()
 
     def is_valid_url(self, url: str) -> bool:
         return url.startswith("http://") or url.startswith("https://")
-
-    def is_number(self, text: str) -> bool:
-        try:
-            float(text)
-            return True
-        except ValueError:
-            return False
-
-    def get_product_info(self, url: str) -> dict:
-        parser = ProductParser(url)
-        return parser.get_product_info()
 
     def run(self):
         self.application.add_handler(CommandHandler("start", self.start))

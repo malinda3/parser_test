@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!bin/bashg
 
 docker rm -f unittest_container 2>/dev/null
 docker rmi unittest_container -f 2>/dev/null
