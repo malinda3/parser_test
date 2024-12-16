@@ -55,7 +55,7 @@ class BotHandler:
         }
         self.kafka_topic = "parsing_requests"
         self.kafka_result_topic = "parsing_results"
-        self.kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+        self.kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.message.from_user
