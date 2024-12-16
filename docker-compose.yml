@@ -67,6 +67,15 @@ services:
     networks:
       - kafka_network
 
+  spam_bot:
+    build:
+      context: ./spam_bot
+    container_name: spam_bot
+    depends_on:
+      - kafka
+    networks:
+      - kafka_network
+
 volumes:
   kafka-data:
 
