@@ -1,6 +1,7 @@
 services:
   kafka:
-    image: bitnami/kafka:latest
+    build:
+      context: ./kafka
     container_name: kafka
     ports:
       - "9092:9092"
@@ -17,13 +18,6 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
     volumes:
       - kafka-data:/bitnami/kafka
-    command:
-      - sh
-      - -c
-      - |
-        kafka-storage.sh random-uuid > /tmp/cluster_id && \
-        kafka-storage.sh format -t $$(cat /tmp/cluster_id) -c /opt/bitnami/kafka/config/kraft/server.properties && \
-        /opt/bitnami/scripts/kafka/run.sh
     networks:
       - kafka_network
 
