@@ -30,45 +30,45 @@ services:
     networks:
       - kafka_network
 
-  parser:
-    build:
-      context: ./parser
-    container_name: parser
-    depends_on:
-      - kafka
-    networks:
-      - kafka_network
+  # parser:
+  #   build:
+  #     context: ./parser
+  #   container_name: parser
+  #   depends_on:
+  #     - kafka
+  #   networks:
+  #     - kafka_network
 
-  postgres:
-    build:
-      context: ./postgres
-    container_name: postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=orders
-    ports:
-      - "5432:5432"
-    networks:
-      - kafka_network
+  # postgres:
+  #   build:
+  #     context: ./postgres
+  #   container_name: postgres
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #     - POSTGRES_DB=orders
+  #   ports:
+  #     - "5432:5432"
+  #   networks:
+  #     - kafka_network
 
-  go_consumer:
-    build:
-      context: ./db_go
-    container_name: go_consumer
-    depends_on:
-      - kafka
-    networks:
-      - kafka_network
+  # go_consumer:
+  #   build:
+  #     context: ./db_go
+  #   container_name: go_consumer
+  #   depends_on:
+  #     - kafka
+  #   networks:
+  #     - kafka_network
 
-  spam_bot:
-    build:
-      context: ./spam_bot
-    container_name: spam_bot
-    depends_on:
-      - kafka
-    networks:
-      - kafka_network
+  # spam_bot:
+  #   build:
+  #     context: ./spam_bot
+  #   container_name: spam_bot
+  #   depends_on:
+  #     - kafka
+  #   networks:
+  #     - kafka_network
 
 volumes:
   kafka-data:
