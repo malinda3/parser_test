@@ -144,6 +144,14 @@ class BotHandler:
                     product_info = response.get("product_info", {})
                     product_name = product_info.get("name", "Неизвестный продукт")
                     product_price = product_info.get("price", "Неизвестная цена")
+
+                    try:
+                        currency_map = {'$': 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY', '₹': 'CNY'}
+                        currency = next((cur for sym, cur in currency_map.items() if sym in product_price), None)
+                        price = float(re.sub(r'[^\d.,]', '', product_price).replace(',', '').replace('.', '.', 1))
+                        product_price = f"{round(price * self.currencies.get(currency, 1), 2)} RUB" if currency else f"{price} (валюта не распознана)"
+                    except:
+                        product_price = product_info.get("price", "Неизвестная цена")
                     
                     await self.application.bot.send_message(
                         user_id,
