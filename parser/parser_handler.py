@@ -89,4 +89,4 @@ async def consume_message():
         logger.info("producer and consumer stopped")
 
 if __name__ == "__main__":
-    asyncio.run(consume_message)
+    asyncio.run(consume_message())
