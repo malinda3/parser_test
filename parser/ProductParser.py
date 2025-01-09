@@ -1,4 +1,5 @@
-import requests
+import aiohttp
+import asyncio
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 import re
@@ -16,14 +17,16 @@ class ProductParser:
         self.product_name = None
         self.product_price = None
 
-    def fetch_page(self):
+    async def fetch_page(self):
         try:
-            response = requests.get(self.url, headers=self.headers, timeout=self.timeout)
-            response.raise_for_status()
-            self.soup = BeautifulSoup(response.text, 'html.parser')
-        except requests.exceptions.HTTPError as http_err:
-            logging.error(f"HTTP error occurred: {http_err}")
-        except requests.exceptions.Timeout:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.url, headers=self.headers, timeout=self.timeout) as response:
+                    response.raise_for_status()
+                    page_content = await response.text()
+                    self.soup = BeautifulSoup(page_content, 'html.parser')
+        except aiohttp.ClientError as err:
+            logging.error(f"Error fetching page: {err}")
+        except asyncio.TimeoutError:
             logging.error(f"Timeout after {self.timeout} seconds on {self.url}.")
         except Exception as err:
             logging.error(f"Other error occurred: {err}")
@@ -73,28 +76,27 @@ class ProductParser:
             self.product_price = "Price not found"
             logging.error("No content to parse for product price.")
 
-
-    def get_product_info(self):
-        self.fetch_page()
+    async def get_product_info(self):
+        await self.fetch_page()
         self.parse_product_name()
         self.parse_product_price()
         return {
             'name': self.product_name,
             'price': self.product_price
         }
-        
-    def get_product_name(self):
-        self.fetch_page()
+
+    async def get_product_name(self):
+        await self.fetch_page()
         self.parse_product_name()
         return self.product_name
 
-    def get_product_price(self):
-        self.fetch_page()
+    async def get_product_price(self):
+        await self.fetch_page()
         self.parse_product_price()
         return self.product_price
 
     @staticmethod
-    def test():
+    async def test():
         urls = [
             'https://faworldentertainment.com/collections/bottoms/products/salt-and-pepper-canvas-double-knee-pant',
             'https://shop.palaceskateboards.com/products/a7oh8xvpjvqf',
@@ -110,12 +112,11 @@ class ProductParser:
             'https://fuckthepopulation.com/collections/shop/products/made-in-hell-leather-puffer-coatwhite',
             'https://dimemtl.com/collections/dime-fall-24/products/fa24-coverstitch-sherpa-fleece-military-brown',
             'https://kith.com/collections/mens-footwear/products/aaih3432',
-            #'https://shop-jp.doverstreetmarket.com/collections/asics/products/asics-ub8-s-gt-2160-400'
         ]
         
         for url in urls:
             parser = ProductParser(url)
-            product_info = parser.get_product_info()
+            product_info = await parser.get_product_info()
             
             logging.info(f"URL: {url}")
             logging.info(f"Name: {product_info['name']}")
@@ -123,10 +124,4 @@ class ProductParser:
             logging.info('-' * 40)
 
 if __name__ == "__main__":
-    ProductParser.test()
-
-    #url = "https://faworldentertainment.com/collections/bottoms/products/salt-and-pepper-canvas-double-knee-pant"
-    #parser = ProductParser(url)
-    #product_info = parser.get_product_info()
-    #logging.info(f"Name: {product_info['name']}")
-    #logging.info(f"Price: {product_info['price']}")
+    asyncio.run(ProductParser.test())
