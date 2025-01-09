@@ -66,27 +66,32 @@ async def process_message(message):
 
     except Exception as e:
         logger.error(f"Error processing message: {e}")
+        
 async def consume_message():
     try:
         while True:
             msg = await asyncio.to_thread(consumer.poll, timeout=1.0)
 
+            if msg is None:
+                continue  # Нет сообщения, продолжаем слушать
+
             if msg.error():
                 if msg.error().code() == KafkaException._PARTITION_EOF:
-                    logger.info(f"End of par reach {msg.topic()} [{msg.partition}]")
+                    logger.info(f"End of partition reached {msg.topic()} [{msg.partition()}]")
                 else:
-                    logger.erro(f"Error: {msg.error()}")
+                    logger.error(f"Error: {msg.error()}")
             else:
                 message = json.loads(msg.value().decode('utf-8'))
-                logger.info(f"receive msg: {message}")
+                logger.info(f"Received message: {message}")
                 await process_message(message)
     except KeyboardInterrupt:
-        logger.info("stopped manual")
+        logger.info("Consumer stopped manually")
 
     finally:
         consumer.close()
         producer.flush()
-        logger.info("producer and consumer stopped")
+        logger.info("Producer and consumer stopped")
+
 
 if __name__ == "__main__":
     asyncio.run(consume_message())
