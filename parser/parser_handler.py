@@ -50,7 +50,9 @@ async def process_message(message):
 
         # Получение информации о продукте
         parser = ProductParser(url)
-        product_info = await asyncio.to_thread(parser.get_product_info)
+        
+        # Важно использовать асинхронное выполнение с await
+        product_info = await asyncio.to_thread(parser.get_product_info)  # Здесь можно делать блокирующие операции асинхронно
 
         logger.info(f"Parsed product info: {product_info}")
         
