@@ -50,7 +50,7 @@ async def process_message(message):
 
         # Получение информации о продукте
         parser = ProductParser(url)
-        product_info = await asyncio.to_thread(parser.get_product_info())
+        product_info = await asyncio.to_thread(parser.get_product_info)
 
         logger.info(f"Parsed product info: {product_info}")
         
@@ -66,7 +66,7 @@ async def process_message(message):
 
     except Exception as e:
         logger.error(f"Error processing message: {e}")
-        
+
 async def consume_message():
     try:
         while True:
