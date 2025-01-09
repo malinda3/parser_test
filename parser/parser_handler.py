@@ -16,8 +16,14 @@ timed_rotating_handler = TimedRotatingFileHandler(
 timed_rotating_handler.setFormatter(log_formatter)
 
 # Настройка логгера
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+# Удаляем все предыдущие обработчики, чтобы избежать дублирования логов в stdout
+for handler in logger.handlers[:]:
+    logger.removeHandler(handler)
+
+# Добавляем обработчик ротации в логгер
 logger.addHandler(timed_rotating_handler)
 
 # Настройки Kafka
