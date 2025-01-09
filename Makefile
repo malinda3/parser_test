@@ -25,6 +25,11 @@ define delete_service
 	kubectl delete -f $(2)/$(1).yaml
 	docker rmi $(1):latest -f || true
 endef
+install-deps:
+	@echo "curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash"
+
+init-cluster:
+	k3d cluster create test
 
 #BUILD
 build-my-postgres:
