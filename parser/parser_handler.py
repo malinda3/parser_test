@@ -4,10 +4,13 @@ from ProductParser import ProductParser
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import asyncio
+from datetime import datetime
 
 # Настройка логирования с ротацией по времени (ежедневно в 00:00)
 log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-log_file = 'handler.log'
+
+# Создание уникального имени файла для каждого дня
+log_file = f'handler_{datetime.now().strftime("%Y-%m-%d")}.log'
 
 # Создание обработчика, который будет создавать новый лог-файл каждый день в 00:00
 timed_rotating_handler = TimedRotatingFileHandler(
