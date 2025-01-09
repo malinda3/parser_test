@@ -2,11 +2,23 @@ import json
 from confluent_kafka import Consumer, KafkaException, Producer
 from ProductParser import ProductParser
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import asyncio
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
+# Настройка логирования с ротацией по времени (ежедневно в 00:00)
+log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+log_file = 'handler.log'
+
+# Создание обработчика, который будет создавать новый лог-файл каждый день в 00:00
+timed_rotating_handler = TimedRotatingFileHandler(
+    log_file, when="midnight", interval=1, backupCount=7  # Создается новый файл ежедневно, сохраняются 7 старых
+)
+timed_rotating_handler.setFormatter(log_formatter)
+
+# Настройка логгера
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(timed_rotating_handler)
 
 # Настройки Kafka
 KAFKA_BOOTSTRAP_SERVERS = 'kafka:9092'
