@@ -28,9 +28,9 @@ producer = Producer({'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS})
 consumer.subscribe([KAFKA_TOPIC_REQUEST])
 
 # Асинхронная отправка результата в Kafka
-async def send_result_to_kafka(producer, result_message):
+def send_result_to_kafka(producer, result_message):
     producer.produce(KAFKA_TOPIC_RESULT, json.dumps(result_message).encode('utf-8'))
-    producer.flush()
+    producer.poll(0)  # Пуллим продюсера для обработки событий
     logger.info(f"Sent result to Kafka: {result_message}")
 
 # Асинхронный класс ProductParser
@@ -41,10 +41,13 @@ class ProductParser:
     async def get_product_info(self):
         async with ClientSession() as session:
             async with session.get(self.url) as response:
-                # Загрузите и обработайте данные страницы
                 html = await response.text()
-                # Здесь должна быть ваша логика парсинга
-                return {"url": self.url, "html_length": len(html)}
+                # Здесь должна быть ваша логика парсинга, например, парсинг цены
+                # Пример:
+                from bs4 import BeautifulSoup  # Используем BeautifulSoup для парсинга HTML
+                soup = BeautifulSoup(html, 'html.parser')
+                price = soup.find('span', {'class': 'price'}).text if soup.find('span', {'class': 'price'}) else 'Price not found'
+                return {"url": self.url, "price": price}
 
 # Асинхронная обработка сообщения
 async def process_message(message):
@@ -70,7 +73,7 @@ async def process_message(message):
         }
 
         # Отправка результата обратно в Kafka
-        await send_result_to_kafka(producer, result_message)
+        send_result_to_kafka(producer, result_message)
 
     except Exception as e:
         logger.error(f"Error processing message: {e}")
@@ -78,8 +81,6 @@ async def process_message(message):
 # Основной асинхронный цикл потребления сообщений
 async def consume_messages():
     logger.info(f"Listening to topic '{KAFKA_TOPIC_REQUEST}'...")
-    loop = asyncio.get_event_loop()
-
     try:
         while True:
             msg = consumer.poll(timeout=1.0)
@@ -96,7 +97,7 @@ async def consume_messages():
             logger.info(f"Received message: {message}")
 
             # Асинхронно обрабатываем сообщение
-            asyncio.create_task(process_message(message))
+            await process_message(message)
 
     except KeyboardInterrupt:
         logger.info("Consumer stopped manually.")
