@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parser
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: parser
+  template:
+    metadata:
+      labels:
+        app: parser
+    spec:
+      containers:
+        - name: parser
+          image: parser:latest  # Локальный образ
+          imagePullPolicy: Never  # Будет использовать только локальный образ
+          ports:
+            - containerPort: 8080

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: my-postgres:latest
+          imagePullPolicy: Never 
+          env:
+            - name: POSTGRES_USER
+              value: "postgres"  # Устанавливаем имя пользователя
+            - name: POSTGRES_PASSWORD
+              value: "postgres"  # Устанавливаем пароль
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-pvc  # Использование PVC для данных
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: kafka
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi  # Указание необходимого объема для хранения данных
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: kafka
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres

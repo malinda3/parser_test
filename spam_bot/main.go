@@ -12,17 +12,16 @@ import (
 )
 
 const (
-	dbHost     = "postgres"
+	dbHost     = "postgres-service"
 	dbPort     = "5432"
-	dbName     = "orders"
 	dbUser     = "postgres"
 	dbPassword = "postgres"
 )
 
 func main() {
 	// Создаем подключение к базе данных
-	connStr := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=disable",
-		dbHost, dbPort, dbName, dbUser, dbPassword)
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable",
+		dbHost, dbPort, dbUser, dbPassword)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatalf("Ошибка подключения к базе данных: %v", err)

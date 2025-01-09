@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spam-bot
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spam-bot
+  template:
+    metadata:
+      labels:
+        app: spam-bot
+    spec:
+      containers:
+        - name: spam-bot
+          image: spam-bot:latest 
+          imagePullPolicy: Never  
+          ports:
+            - containerPort: 8080

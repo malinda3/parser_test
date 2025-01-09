@@ -74,7 +74,7 @@ func main() {
 	kafkaURL := "kafka:9092"
 	topic := "parsing_requests"
 	partition := 0
-	connStr := "user=postgres password=postgres dbname=orders host=postgres port=5432 sslmode=disable"
+	connStr := "user=postgres password=postgres host=postgres-service port=5432 sslmode=disable"
 
 	dbChan := make(chan *sql.DB)
 	kafkaChan := make(chan *kafka.Reader)

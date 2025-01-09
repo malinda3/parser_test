@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bot
+  template:
+    metadata:
+      labels:
+        app: bot
+    spec:
+      containers:
+        - name: bot
+          image: bot:latest  # Локальный образ
+          imagePullPolicy: Never  # Будет использовать только локальный образ
+          ports:
+            - containerPort: 8080
