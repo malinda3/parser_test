@@ -1,8 +1,8 @@
 import json
-import asyncio
-from aiohttp import ClientSession
 from confluent_kafka import Consumer, KafkaException, Producer
+from ProductParser import ProductParser
 import logging
+import asyncio
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -13,99 +13,80 @@ KAFKA_BOOTSTRAP_SERVERS = 'kafka:9092'
 KAFKA_TOPIC_REQUEST = 'parsing_requests'
 KAFKA_TOPIC_RESULT = 'parsing_results'
 
-# Настройка Kafka Consumer
-consumer_config = {
+# Настройка консьюмера Kafka
+config = {
     'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS,
     'group.id': 'my-consumer-group',
     'auto.offset.reset': 'earliest'
 }
-consumer = Consumer(consumer_config)
 
-# Настройка Kafka Producer
+consumer = Consumer(config)
+
+# Настройка продюсера Kafka для отправки результатов
 producer = Producer({'bootstrap.servers': KAFKA_BOOTSTRAP_SERVERS})
 
-# Подписываемся на тему
 consumer.subscribe([KAFKA_TOPIC_REQUEST])
 
-# Асинхронная отправка результата в Kafka
-def send_result_to_kafka(producer, result_message):
+logger.info(f"Listening to topic '{KAFKA_TOPIC_REQUEST}'...")
+
+async def send_result_to_kafka(result_message):
+    """
+    Функция отправки обработанного результата обратно в Kafka.
+    """
     producer.produce(KAFKA_TOPIC_RESULT, json.dumps(result_message).encode('utf-8'))
-    producer.poll(0)  # Пуллим продюсера для обработки событий
+    producer.flush()
     logger.info(f"Sent result to Kafka: {result_message}")
 
-# Асинхронный класс ProductParser
-class ProductParser:
-    def __init__(self, url):
-        self.url = url
-
-    async def get_product_info(self):
-        async with ClientSession() as session:
-            async with session.get(self.url) as response:
-                html = await response.text()
-                # Здесь должна быть ваша логика парсинга, например, парсинг цены
-                # Пример:
-                from bs4 import BeautifulSoup  # Используем BeautifulSoup для парсинга HTML
-                soup = BeautifulSoup(html, 'html.parser')
-                price = soup.find('span', {'class': 'price'}).text if soup.find('span', {'class': 'price'}) else 'Price not found'
-                return {"url": self.url, "price": price}
-
-# Асинхронная обработка сообщения
 async def process_message(message):
     """
-    Обработка одного сообщения:
-    1. Извлечение URL.
-    2. Парсинг информации о продукте.
-    3. Отправка результата в Kafka.
+    Функция обработки сообщения из Kafka.
+    1. Извлекаем ссылку.
+    2. Парсим информацию о продукте с помощью ProductParser.
+    3. Отправляем результат обратно в Kafka.
     """
     try:
         url = message['url']
         logger.info(f"Processing URL: {url}")
 
-        # Создание парсера и получение информации о продукте
+        # Получение информации о продукте
         parser = ProductParser(url)
-        product_info = await parser.get_product_info()
+        product_info = await asyncio.to_thread(parser.get_product_info())
 
-        # Подготовка результата
+        logger.info(f"Parsed product info: {product_info}")
+        
+        # Подготовка сообщения для отправки в Kafka
         result_message = {
             'request_id': message['request_id'],
             'user_id': message['user_id'],
             'product_info': product_info
         }
-
+        
         # Отправка результата обратно в Kafka
-        send_result_to_kafka(producer, result_message)
+        await send_result_to_kafka(result_message)
 
     except Exception as e:
         logger.error(f"Error processing message: {e}")
-
-# Основной асинхронный цикл потребления сообщений
-async def consume_messages():
-    logger.info(f"Listening to topic '{KAFKA_TOPIC_REQUEST}'...")
+async def consume_message():
     try:
         while True:
-            msg = consumer.poll(timeout=1.0)
-            if msg is None:
-                await asyncio.sleep(0.1)  # Ждём немного, если сообщений нет
-                continue
+            msg = await asyncio.to_thread(consumer.poll, timeout=1.0)
 
             if msg.error():
-                logger.error(f"Kafka error: {msg.error()}")
-                continue
-
-            # Расшифровка сообщения
-            message = json.loads(msg.value().decode('utf-8'))
-            logger.info(f"Received message: {message}")
-
-            # Асинхронно обрабатываем сообщение
-            await process_message(message)
-
+                if msg.error().code() == KafkaException._PARTITION_EOF:
+                    logger.info(f"End of par reach {msg.topic()} [{msg.partition}]")
+                else:
+                    logger.erro(f"Error: {msg.error()}")
+            else:
+                message = json.loads(msg.value().decode('utf-8'))
+                logger.info(f"receive msg: {message}")
+                await process_message(message)
     except KeyboardInterrupt:
-        logger.info("Consumer stopped manually.")
+        logger.info("stopped manual")
 
     finally:
         consumer.close()
         producer.flush()
+        logger.info("producer and consumer stopped")
 
-# Запуск асинхронного цикла
-if __name__ == '__main__':
-    asyncio.run(consume_messages())
+if __name__ == "__main__":
+    asyncio.run(consume_message)
