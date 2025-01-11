@@ -25,11 +25,17 @@ define delete_service
 	kubectl delete -f $(2)/$(1).yaml
 	docker rmi $(1):latest -f || true
 endef
+
 install-deps:
+	@echo "curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl""
 	@echo "curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash"
 
 init-cluster:
 	k3d cluster create test
+
+create-namespace:
+	@echo "Creating namespace $(NAMESPACE) if not exists..."
+	kubectl create namespace kafka
 
 #BUILD
 build-my-postgres:
@@ -72,11 +78,9 @@ deploy-spam-bot:
 deploy-kafka:
 	$(call deploy_service,kafka,$(KAFKA_PATH))
 
-create-namespace:
-	@echo "Creating namespace $(NAMESPACE) if not exists..."
-	kubectl create namespace kafka
 
-deploy: create-namespace deploy-my-postgres deploy-dbgo deploy-bot deploy-parser deploy-spam-bot deploy-kafka
+
+deploy: deploy-kafka deploy-my-postgres deploy-dbgo deploy-bot deploy-parser deploy-spam-bot 
 #DELETE
 delete-my-postgres:
 	$(call delete_service,my-postgres,$(POSTGRES_PATH))
