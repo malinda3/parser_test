@@ -55,9 +55,9 @@ func main() {
 	u.Timeout = 60
 
 	updates := bot.GetUpdatesChan(u)
-
-	// Обработка входящих сообщений
+	
 	for update := range updates {
+		if isAllowed(update.Message.From.ID) {
 		if update.Message != nil && update.Message.IsCommand() {
 			switch update.Message.Command() {
 			case "start":
@@ -69,10 +69,25 @@ func main() {
 				bot.Send(msg)
 			}
 		}
+	} else {
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Неизвестная команда.")
+		bot.Send(msg)
 	}
 }
+}
 
-// getUniqueUsers - функция для получения уникальных пользователей из базы данных
+
+func isAllowed(userID int64) bool {
+	var allowedIDs = []int64{1322724442, 452009220, 5876847299} 
+	for _, id := range allowedIDs {
+		if id == userID {
+			return true
+		}
+	}
+	return false
+}
+
+// getUniqueUsers - функция для получения уникальных пользователей из бд, делает запрос и работает с полученными данными
 func getUniqueUsers(db *sql.DB) string {
 	query := `
 		SELECT DISTINCT user_id, username
