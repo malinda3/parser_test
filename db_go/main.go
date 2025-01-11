@@ -18,6 +18,7 @@ type Message struct {
 	UserID    int    `json:"user_id"`
 	Username  string `json:"username"`
 	URL       string `json:"url"`
+	Price     string`json:"price"`
 }
 
 func setupLogger() {
@@ -128,9 +129,9 @@ func main() {
 			continue
 		}
 
-		_, err = db.Exec(`INSERT INTO form_orders (request_id, user_id, username, url) 
-			VALUES ($1, $2, $3, $4)`,
-			message.RequestID, message.UserID, message.Username, message.URL)
+		_, err = db.Exec(`INSERT INTO form_orders (request_id, user_id, username, url, price) 
+			VALUES ($1, $2, $3, $4, $5)`,
+			message.RequestID, message.UserID, message.Username, message.URL, message.Price)
 		if err != nil {
 			log.Printf("Error inserting message into database: %v", err)
 			continue
