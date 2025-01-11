@@ -55,6 +55,8 @@ spec:
               value: "PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093"
             - name: KAFKA_CFG_LISTENERS
               value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+            - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
+              value: "true"
             - name: KAFKA_CFG_LOG_DIRS
               value: "/tmp/kraft-logs"
             - name: KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR
