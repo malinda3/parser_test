@@ -60,36 +60,39 @@ func main() {
 		if update.Message != nil {
 			userID := update.Message.From.ID
 
-			if isAllowed(userID) {
-					orderID := update.Message.Text
-					response := checkOrder(db, orderID)
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
-					bot.Send(msg)
-					orderState[userID] = false
-					continue
-				}
-
-				if update.Message.IsCommand() {
-					switch update.Message.Command() {
-					case "start":
-						response := getUniqueUsers(db)
-						msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
-						bot.Send(msg)
-					case "order":
-						orderState[userID] = true
-						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Введите ID заказа:")
-						bot.Send(msg)
-					default:
-						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Неизвестная команда.")
-						bot.Send(msg)
-					}
-				}
-			} else {
+			if !isAllowed(userID) {
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Access denied: your Telegram ID is not allowed.")
 				bot.Send(msg)
+				continue
+			}
+
+			if orderState[userID] {
+				orderID := update.Message.Text
+				response := checkOrder(db, orderID)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
+				bot.Send(msg)
+				orderState[userID] = false
+				continue
+			}
+
+			if update.Message.IsCommand() {
+				switch update.Message.Command() {
+				case "start":
+					response := getUniqueUsers(db)
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
+					bot.Send(msg)
+				case "order":
+					orderState[userID] = true
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Введите ID заказа:")
+					bot.Send(msg)
+				default:
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Неизвестная команда.")
+					bot.Send(msg)
+				}
 			}
 		}
 	}
+}
 
 
 func checkOrder(db *sql.DB, orderID string) string {
