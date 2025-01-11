@@ -24,7 +24,7 @@ func main() {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	
 
-	// Создаем подключение к базе данных
+	// db connection
 	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPassword)
 	db, err := sql.Open("postgres", connStr)
@@ -33,49 +33,86 @@ func main() {
 	}
 	defer db.Close()
 
-	// Проверка подключения
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := db.PingContext(ctx); err != nil {
 		log.Fatalf("Ошибка проверки соединения с базой данных: %v", err)
 	}
 
-	// Создаем Telegram-бота
+	// tg bot
 	botToken := os.Getenv("TELEGRAM_TOKEN")
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		log.Fatalf("Ошибка создания Telegram-бота: %v", err)
 	}
 
-	bot.Debug = true // Логирование запросов бота
+	bot.Debug = true 
 	log.Printf("Авторизован под аккаунтом %s", bot.Self.UserName)
 
-	// Создаем обновления (polling)
+	// polling
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
 	updates := bot.GetUpdatesChan(u)
-	
+	orderState := make(map[int64]bool)
+
 	for update := range updates {
-		if isAllowed(update.Message.From.ID) {
-		if update.Message != nil && update.Message.IsCommand() {
-			switch update.Message.Command() {
-			case "start":
-				response := getUniqueUsers(db)
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
-				bot.Send(msg)
-			default:
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Неизвестная команда.")
+		if update.Message != nil {
+			userID := update.Message.From.ID
+
+			if isAllowed(userID) {
+					orderID := update.Message.Text
+					response := checkOrder(db, orderID)
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
+					bot.Send(msg)
+					orderState[userID] = false
+					continue
+				}
+
+				if update.Message.IsCommand() {
+					switch update.Message.Command() {
+					case "start":
+						response := getUniqueUsers(db)
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, response)
+						bot.Send(msg)
+					case "order":
+						orderState[userID] = true
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Введите ID заказа:")
+						bot.Send(msg)
+					default:
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Неизвестная команда.")
+						bot.Send(msg)
+					}
+				}
+			} else {
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Access denied: your Telegram ID is not allowed.")
 				bot.Send(msg)
 			}
 		}
-	} else {
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Неизвестная команда.")
-		bot.Send(msg)
 	}
-}
-}
 
+
+func checkOrder(db *sql.DB, orderID string) string {
+	query := `
+		SELECT request_id, user_id, username, url
+		FROM public.form_orders
+		WHERE request_id = $1
+	`
+
+	var requestID, username, url string
+	var userID int64
+
+	err := db.QueryRow(query, orderID).Scan(&requestID, &userID, &username, &url)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "order not found"
+		}
+		log.Printf("error %v", err)
+		return "error"
+	}
+
+	return fmt.Sprintf("Order:\nRequest ID: %s\nUser ID: %d\nUsername: %s\nURL: %s", requestID, userID, username, url)
+}
 
 func isAllowed(userID int64) bool {
 	var allowedIDs = []int64{452009220, 5876847299} 
