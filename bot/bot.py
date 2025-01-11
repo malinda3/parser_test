@@ -39,7 +39,7 @@ order_logger.addHandler(order_file_handler)
 load_dotenv()
 
 class BotHandler:
-    def __init__(self, token, commission_rate=float(os.getenv('COMMISSION_RATE')), additional_fee=float(os.getenv('ADDITIONAL_FEE')), min_commission=float(os.getenv('min_comission'))):
+    def __init__(self, token, commission_rate=float(os.getenv('COMMISSION_RATE')), additional_fee=float(os.getenv('ADDITIONAL_FEE')), min_commission=int(os.getenv('min_comission'))):
         self.token = token
         self.application = Application.builder().token(self.token).build()
         self.commission_rate = commission_rate
