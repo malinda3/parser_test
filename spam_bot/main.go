@@ -5,20 +5,21 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	_ "github.com/lib/pq"
 )
 
-const (
-	dbHost     = "postgres-service"
-	dbPort     = "5432"
-	dbUser     = "postgres"
-	dbPassword = "postgres"
-)
-
 func main() {
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	
+
 	// Создаем подключение к базе данных
 	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPassword)
@@ -36,7 +37,7 @@ func main() {
 	}
 
 	// Создаем Telegram-бота
-	botToken := "6316465274:AAF9Tm5rAVwTTVaoO4SjgqqCTdluM1o-IWI"
+	botToken := os.Getenv("TELEGRAM_TOKEN")
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		log.Fatalf("Ошибка создания Telegram-бота: %v", err)
