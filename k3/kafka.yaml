@@ -17,7 +17,7 @@ spec:
   selector:
     app: kafka
 ---
-# Deployment для Kafka в режиме KRaft с HostNetwork
+# Deployment для Kafka
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -33,7 +33,7 @@ spec:
       labels:
         app: kafka
     spec:
-      hostNetwork: true  # Используем сетевой интерфейс хоста
+      hostNetwork: true 
       containers:
         - name: kafka
           image: bitnami/kafka:latest

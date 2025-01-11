@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -17,6 +18,16 @@ type Message struct {
 	UserID    int    `json:"user_id"`
 	Username  string `json:"username"`
 	URL       string `json:"url"`
+}
+
+func setupLogger() {
+	logFileName := fmt.Sprintf("app-log-%s.log", time.Now().Format("2006-01-02"))
+	logFile, err := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	log.SetOutput(logFile)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
 
 func connectToDB(connStr string, dbChan chan<- *sql.DB, errChan chan<- error) {
@@ -71,6 +82,8 @@ func connectToKafka(kafkaURL, topic string, partition int, kafkaChan chan<- *kaf
 }
 
 func main() {
+	setupLogger()
+
 	kafkaURL := "kafka:9092"
 	topic := "parsing_requests"
 	partition := 0
@@ -123,6 +136,6 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("Inserted message into form_orders: %v\n", message)
+		log.Printf("Inserted message into form_orders: %v", message)
 	}
 }

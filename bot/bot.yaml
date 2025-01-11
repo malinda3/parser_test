@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: bot
-          image: bot:latest  # Локальный образ
-          imagePullPolicy: Never  # Будет использовать только локальный образ
+          image: bot:latest 
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
