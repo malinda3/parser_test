@@ -34,7 +34,6 @@ init-cluster:
 	k3d cluster create test
 
 create-namespace:
-	@echo "Creating namespace $(NAMESPACE) if not exists..."
 	kubectl create namespace kafka
 
 #BUILD
