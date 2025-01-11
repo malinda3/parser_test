@@ -36,6 +36,7 @@ init-cluster:
 create-namespace:
 	kubectl create namespace kafka
 
+init: install-deps init-cluster create-namespace
 #BUILD
 build-my-postgres:
 	@echo "Building Docker image for my-postgres..."

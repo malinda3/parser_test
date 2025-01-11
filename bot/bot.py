@@ -39,7 +39,7 @@ order_logger.addHandler(order_file_handler)
 load_dotenv()
 
 class BotHandler:
-    def __init__(self, token, commission_rate=float(os.getenv('COMMISSION_RATE')), additional_fee=float(os.getenv('ADDITIONAL_FEE')), min_commission=1000):
+    def __init__(self, token, commission_rate=float(os.getenv('COMMISSION_RATE')), additional_fee=float(os.getenv('ADDITIONAL_FEE')), min_commission=int(os.getenv('MIN_COMISSION'))):
         self.token = token
         self.application = Application.builder().token(self.token).build()
         self.commission_rate = commission_rate
@@ -53,9 +53,9 @@ class BotHandler:
             'JPY': float(os.getenv('jpy')),
             'CNY': float(os.getenv('cny'))
         }
-        self.kafka_topic = "parsing_requests"
-        self.kafka_result_topic = "parsing_results"
-        self.kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+        self.kafka_topic = os.getenv("KAFKA_TOPIC")
+        self.kafka_result_topic = os.getenv("KAFKA_RESULT_TOPIC")
+        self.kafka_bootstrap_servers = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.message.from_user
