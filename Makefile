@@ -104,7 +104,7 @@ delete: delete-my-postgres delete-dbgo delete-bot delete-parser delete-spam-bot 
 #REBUILD
 rebuild-bot: delete-bot build-bot deploy-bot
 
-rebuild-dbgo: delete-db_go build-db_go deploy-db_go
+rebuild-dbgo: delete-dbgo build-dbgo deploy-dbgo
 
 rebuild-spam-bot: delete-spam-bot build-spam-bot deploy-spam-bot
 
