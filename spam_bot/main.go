@@ -79,7 +79,13 @@ func main() {
 
 func isAllowed(userID int64) bool {
 	var allowedIDs = []int64{452009220, 5876847299} 
+	fmt.Printf("\n")
+	fmt.Printf("\n")
+	fmt.Printf("\n")
 	fmt.Printf("ID: %d", userID)
+	fmt.Printf("\n")
+	fmt.Printf("\n")
+	fmt.Printf("\n")
 	for _, id := range allowedIDs {
 		if id == userID {
 			return true
