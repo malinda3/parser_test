@@ -17,7 +17,7 @@ postgresql:
   namespace: kafka
   replicas: 1
   image: 
-    repository: my-postgres
+    repository: library/my-postgres
     tag: latest
     pullPolicy: Never
   storage: 10Gi
