@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: {{ .Values.postgresql.image }}
+          image: "{{ .Values.postgresql.image }}"
           imagePullPolicy: Never
           env:
             - name: POSTGRES_USER
