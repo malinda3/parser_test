@@ -17,8 +17,8 @@ postgresql:
   namespace: kafka
   replicas: 1
   image: 
-    repository: my-postgres
-    tag: latest
+    repository: bitnami/postgresql
+    tag: 15.1.0-debian-11-r12
     imagePullPolicy: Never
   storage: 10Gi
   
