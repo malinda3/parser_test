@@ -30,7 +30,7 @@ for handler in logger.handlers[:]:
 logger.addHandler(timed_rotating_handler)
 
 # Настройки Kafka
-KAFKA_BOOTSTRAP_SERVERS = 'kafka:9092'
+KAFKA_BOOTSTRAP_SERVERS = 'bot-0-kafka:9092'
 KAFKA_TOPIC_REQUEST = 'parsing_requests'
 KAFKA_TOPIC_RESULT = 'parsing_results'
 
