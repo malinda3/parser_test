@@ -13,9 +13,13 @@ kafka:
 postgresql:
   namespace: kafka
   replicas: 1
-  image: my-postgres:latest
+  image: 
+    repository: my-postgres
+    tag: latest
+    pullPolicy: Never
   storage: 10Gi
   
+
 bot:
   name: bot
   replicas: 1
