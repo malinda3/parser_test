@@ -9,4 +9,5 @@ sleep 10
 
 helm dependency update
 helm install bot-0 . -n kafka
+kubectl get pods -n kafka
 #You can use "docker exec k3d-test-server-0 crictl images" to know what images was loaded to k3d cluster, swap k3d-test-server-0 to ur cluster name

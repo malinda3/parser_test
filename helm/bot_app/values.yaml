@@ -18,8 +18,8 @@ postgresql:
   replicas: 1
   image: 
     repository: bitnami/postgresql
-    tag: 15.1.0-debian-11-r12
-    imagePullPolicy: Never
+    tag: latest
+    imagePullPolicy: IfNotPresent
   storage: 10Gi
   
 
