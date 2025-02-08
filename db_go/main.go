@@ -84,11 +84,11 @@ func connectToKafka(kafkaURL, topic string, partition int, kafkaChan chan<- *kaf
 
 func main() {
 	setupLogger()
-
-	kafkaURL := "kafka:9092"
+// KAFKA & POSTGRES CONNECTIONs
+	kafkaURL := "bot-0-kafka:9092"
 	topic := "parsing_requests"
 	partition := 0
-	connStr := "user=postgres password=postgres host=postgres-service port=5432 sslmode=disable"
+	connStr := "user=postgres password=postgres host=bot-0-postgresql port=5432 sslmode=disable"
 
 	dbChan := make(chan *sql.DB)
 	kafkaChan := make(chan *kafka.Reader)

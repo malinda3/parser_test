@@ -4,6 +4,18 @@ ingress:
   enabled: true
   host: ""
 
+kafka:
+  namespace: kafka
+  replicas: 1
+  image: bitnami/kafka:latest
+  nodePort: 30092
+
+postgresql:
+  namespace: kafka
+  replicas: 1
+  image: my-postgres:latest
+  storage: 10Gi
+  
 bot:
   name: bot
   replicas: 1
