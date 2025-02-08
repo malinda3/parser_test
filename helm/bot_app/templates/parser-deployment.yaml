@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-parser
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: parser
+spec:
+  replicas: {{ .Values.parser.replicas }}
+  selector:
+    matchLabels:
+      app: parser
+  template:
+    metadata:
+      labels:
+        app: parser
+    spec:
+      containers:
+        - name: parser
+          image: "{{ .Values.parser.image.repository }}:{{ .Values.parser.image.tag }}"
+          imagePullPolicy: {{ .Values.parser.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.parser.port }}

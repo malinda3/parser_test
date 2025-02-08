@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-spam-bot
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: spam-bot
+spec:
+  replicas: {{ .Values.spam_bot.replicas }}
+  selector:
+    matchLabels:
+      app: spam-bot
+  template:
+    metadata:
+      labels:
+        app: spam-bot
+    spec:
+      containers:
+        - name: spam-bot
+          image: "{{ .Values.spam_bot.image.repository }}:{{ .Values.spam_bot.image.tag }}"
+          imagePullPolicy: {{ .Values.spam_bot.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.spam_bot.port }}

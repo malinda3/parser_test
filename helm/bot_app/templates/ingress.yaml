@@ -1,0 +1,43 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  namespace: {{ .Values.namespace }}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /bot
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-bot
+                port:
+                  number: {{ .Values.bot.service.port }}
+
+          - path: /parser
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-parser
+                port:
+                  number: {{ .Values.parser.service.port }}
+
+          - path: /dbgo
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-dbgo
+                port:
+                  number: {{ .Values.dbgo.service.port }}
+
+          - path: /spam-bot
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-spam-bot
+                port:
+                  number: {{ .Values.spam_bot.service.port }}

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: bot-app
+description: Helm chart for Telegram bot application
+
+type: application
+version: 0.1.0
+appVersion: "1.0"
+
+dependencies:
+  - name: postgresql
+    version: 12.1.5
+    repository: https://charts.bitnami.com/bitnami
+
+  - name: kafka
+    version: 30.1.6
+    repository: https://charts.bitnami.com/bitnami

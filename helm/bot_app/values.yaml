@@ -1,0 +1,47 @@
+namespace: kafka
+
+ingress:
+  enabled: true
+  host: ""
+
+bot:
+  name: bot
+  replicas: 1
+  image:
+    repository: bot
+    tag: latest
+    pullPolicy: Never
+  port: 8080
+  service:
+    port: 8080
+
+parser:
+  name: parser
+  replicas: 1
+  image:
+    repository: parser
+    tag: latest
+    pullPolicy: Never
+  port: 8080
+  service:
+    port: 8080
+
+spam_bot:
+  replicas: 1
+  image:
+    repository: "spam-bot"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+  port: 8080
+  service:
+    port: 8080
+
+dbgo:
+  replicas: 1
+  image:
+    repository: "dbgo"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+  port: 8080
+  service:
+    port: 8080

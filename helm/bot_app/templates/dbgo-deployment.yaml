@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-dbgo
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: dbgo
+spec:
+  replicas: {{ .Values.dbgo.replicas }}
+  selector:
+    matchLabels:
+      app: dbgo
+  template:
+    metadata:
+      labels:
+        app: dbgo
+    spec:
+      containers:
+        - name: dbgo
+          image: "{{ .Values.dbgo.image.repository }}:{{ .Values.dbgo.image.tag }}"
+          imagePullPolicy: {{ .Values.dbgo.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.dbgo.port }}

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-parser
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: parser
+  ports:
+    - protocol: TCP
+      port: {{ .Values.parser.service.port }}
+      targetPort: {{ .Values.parser.port }}
