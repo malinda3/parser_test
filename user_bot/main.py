@@ -86,10 +86,6 @@ async def handle_message(update: Update, context: CallbackContext):
             return
 
         data = response.json()
-        
-        if "ProductInfo" not in data:
-            await update.message.reply_text("Не удалось получить информацию о товаре.")
-            return
 
         product_info = data["product_info"]
         name = product_info.get("Name", "Неизвестно")
