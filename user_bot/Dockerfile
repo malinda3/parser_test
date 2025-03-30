@@ -1,13 +1,11 @@
-FROM golang:1.22-alpine AS builder
-WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download
-COPY . .
-RUN go build -o bot
+FROM golang:1.23-alpine
 
-FROM alpine:3.19
 WORKDIR /app
-COPY --from=builder /app/bot /app/bot
-COPY --from=builder /app/.env /app/.env
 
-CMD ["./bot"]
+COPY /go.mod /go.sum ./
+COPY /main.go .
+RUN go mod tidy
+COPY .env ./
+COPY /*.go ./
+
+CMD ["go", "run", "main.go"]
