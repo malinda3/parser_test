@@ -76,7 +76,8 @@ create-namespace:
 	@echo "Creating namespace $(NAMESPACE) if not exists..."
 	kubectl create namespace kafka
 
-deploy: create-namespace deploy-my-postgres deploy-dbgo deploy-bot deploy-parser deploy-spam-bot deploy-kafka
+Install: create-namespace deploy-kafka build deploy-my-postgres deploy-dbgo deploy-bot deploy-parser deploy-spam-bot
+Old_Install:  create-namespace deploy-my-postgres deploy-dbgo deploy-bot deploy-parser deploy-spam-bot deploy-kafka
 #DELETE
 delete-my-postgres:
 	$(call delete_service,my-postgres,$(POSTGRES_PATH))
