@@ -8,26 +8,20 @@ from telegram.error import InvalidToken
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Получение токена и URL из переменных окружения
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_URL = os.getenv("API_URL")
 
-# Проверка, что токен задан
 if not BOT_TOKEN:
     logger.error("BOT_TOKEN is not set in the environment variables")
     exit(1)
 
-# Проверка, что URL задан
 if not API_URL:
     logger.warning("API_URL is not set. API requests will be skipped.")
 
-# Логируем токен для отладки, кроме самого токена
-logger.info(f"Bot token set: {BOT_TOKEN[:4]}...{BOT_TOKEN[-4:]}")  # Печатаем только первые и последние 4 символа токена
+logger.info(f"Bot token set: {BOT_TOKEN[:4]}...{BOT_TOKEN[-4:]}") 
 
-# Функция для проверки токена
 def check_bot_token(token: str):
     try:
-        # Пробуем получить информацию о боте с использованием токена
         bot = requests.get(f"https://api.telegram.org/bot{token}/getMe")
         if bot.status_code == 200:
             result = bot.json()
@@ -40,20 +34,19 @@ def check_bot_token(token: str):
         logger.error(f"Error validating bot token: {e}")
         exit(1)
 
-# Проверяем токен при запуске
 check_bot_token(BOT_TOKEN)
 
-# Обработчик команды /start
 async def start(update: Update, context: CallbackContext):
     await update.message.reply_text("Отправьте ссылку на товар.")
 
-# Функция для проверки URL
 def is_url(text: str) -> bool:
     return text.startswith("http://") or text.startswith("https://")
 
-# Обработчик текстовых сообщений
 async def handle_message(update: Update, context: CallbackContext):
     text = update.message.text
+
+    # Логируем входящий запрос
+    logger.info(f"Received message from {update.message.from_user.id}: {text}")
 
     if not is_url(text):
         return
@@ -62,7 +55,6 @@ async def handle_message(update: Update, context: CallbackContext):
         await update.message.reply_text("API_URL не задан. Запросы к API пропущены.")
         return
 
-    # Создаем тело запроса
     request_data = {
         "url": text,
         "request_id": "1",  # Пример значения request_id
