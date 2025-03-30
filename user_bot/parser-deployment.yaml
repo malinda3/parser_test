@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegram-bot
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telegram-bot
+  template:
+    metadata:
+      labels:
+        app: telegram-bot
+    spec:
+      containers:
+        - name: bot
+          image: telegram-bot:latest
+          imagePullPolicy: Never
+          env:
+            - name: BOT_TOKEN
+              value: "your_telegram_token"
+            - name: API_URL
+              value: "http://parser:8000/parse"

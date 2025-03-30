@@ -18,4 +18,4 @@ spec:
           image: parser:latest
           imagePullPolicy: Never
           ports:
-            - containerPort: 8080
+            - containerPort: 8000

@@ -1,7 +1,7 @@
-SERVICES := parser
-IMAGE_NAMES := parser
+SERVICES := parser telegram-bot
+IMAGE_NAMES := parser telegram-bot
 PARSER_PATH := ./parser
-
+BOT_PATH := ./bot
 
 define build_image
 	@echo "Building Docker image for $(1)..."
@@ -20,37 +20,55 @@ define delete_service
 	kubectl delete -f $(2)/$(1).yaml
 	docker rmi $(1):latest -f || true
 endef
+
 install-deps:
-	@echo "curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash"
+	@echo "Installing k3d..."
+	curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 
 init-cluster:
 	k3d cluster create test
 
-#BUILD
-
+# BUILD TARGETS
 build-parser:
-	@echo "Building Docker image for parser..."
 	$(call build_image,parser,$(PARSER_PATH))
 
-build: build-parser
-#DEPLOY
+build-bot:
+	$(call build_image,telegram-bot,$(BOT_PATH))
 
+build: build-parser build-bot
+
+# DEPLOY TARGETS
 deploy-parser:
 	$(call deploy_service,parser,$(PARSER_PATH))
 
+deploy-bot:
+	$(call deploy_service,telegram-bot,$(BOT_PATH))
 
 create-namespace:
-	@echo "Creating namespace $(NAMESPACE) if not exists..."
-	kubectl create namespace kafka
+	@echo "Creating namespace kafka if not exists..."
+	kubectl create namespace kafka || true
 
-deploy: create-namespace deploy-parser
-#DELETE
+deploy: create-namespace build deploy-parser deploy-bot
+
+# DELETE TARGETS
 delete-parser:
 	$(call delete_service,parser,$(PARSER_PATH))
 
+delete-bot:
+	$(call delete_service,telegram-bot,$(BOT_PATH))
 
-delete: delete-parser
-#REBUILD
+delete: delete-parser delete-bot
+
+# REBUILD TARGETS
 rebuild-parser: delete-parser build-parser deploy-parser
 
+rebuild-bot: delete-bot build-bot deploy-bot
 
+rebuild: delete build deploy
+
+# UTILITY TARGETS
+logs-bot:
+	kubectl logs -n kafka deployment/telegram-bot -f
+
+logs-parser:
+	kubectl logs -n kafka deployment/parser -f
