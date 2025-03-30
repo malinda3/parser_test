@@ -55,10 +55,20 @@ async def handle_message(update: Update, context: CallbackContext):
         await update.message.reply_text("API_URL не задан. Запросы к API пропущены.")
         return
 
+    # Получаем реальные данные пользователя из update
+    user_id = update.message.from_user.id
+    username = update.message.from_user.username or "Неизвестно"  # Если нет username, используем "Неизвестно"
+    first_name = update.message.from_user.first_name or "Неизвестно"  # Если нет имени, используем "Неизвестно"
+    last_name = update.message.from_user.last_name or "Неизвестно"  # Если нет фамилии, используем "Неизвестно"
+
+    # Создаем request_data с реальными данными пользователя
     request_data = {
         "url": text,
-        "request_id": "1",  # Пример значения request_id
-        "user_id": "1377"  # Пример значения user_id
+        "request_id": str(user_id),  # Используем id пользователя как request_id (или создаем уникальный)
+        "user_id": user_id,  # Реальный user_id из Telegram
+        "username": username,  # Добавляем username пользователя
+        "first_name": first_name,  # Добавляем имя пользователя
+        "last_name": last_name  # Добавляем фамилию пользователя
     }
 
     # Логируем тело запроса
@@ -93,6 +103,7 @@ async def handle_message(update: Update, context: CallbackContext):
     except requests.RequestException as e:
         logger.error(f"Ошибка при запросе к API: {e}")
         await update.message.reply_text("Произошла ошибка при запросе к API.")
+
 
 # Главная функция запуска бота
 def main():
