@@ -1,11 +1,13 @@
-FROM golang:1.23-alpine
+FROM python:3.9-slim
 
 WORKDIR /app
 
-COPY /go.mod  ./
-COPY /main.go .
-RUN go mod tidy
+COPY requirements.txt ./
 COPY .env ./
-COPY /*.go ./
+COPY bot.py ./
 
-CMD ["go", "run", "main.go"]
+# Устанавливаем зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Команда для запуска бота
+CMD ["python", "bot.py"]
