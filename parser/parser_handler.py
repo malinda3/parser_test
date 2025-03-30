@@ -6,35 +6,32 @@ from ProductParser import ProductParser
 from pydantic import BaseModel
 import uuid
 
-# Настройка логирования (как в оригинале)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Модель запроса (аналогично Kafka-сообщению)
 class ParseRequest(BaseModel):
     url: str
-    request_id: str | None = None  # если не передадут, сгенерируем автоматически
-    user_id: str | None = None     # опционально
+    request_id: str
+    user_id: str
 
-# Модель ответа (аналогично Kafka-ответу)
 class ParseResponse(BaseModel):
     request_id: str
-    user_id: str | None
+    user_id: str
     product_info: dict
 
 @app.post("/parse")
 async def parse_product(request: ParseRequest):
-    """Эндпоинт, который делает то же самое, что и Kafka-хендлер"""
+    """Ожидает на вход ссылку на товар, к ней должен прилагаться ID в телеграмме, и ид запроса"""
+    """{Пример запроса, с которым роут работает "url": "https://faworldentertainment.com/collections/fa-best-sellers/products/fa-converse-chuck-70","request_id": "1","user_id": "1337"}"""
+    """На выходе получается json вида {"request_id":"1","user_id":"1337","product_info":{"name":"FA Converse Chuck 70","price":"$110"}}"""
     try:
         logger.info(f"Processing URL: {request.url}")
 
-        # Вызываем ProductParser (синхронный код, но можно обернуть в threadpool)
         parser = ProductParser(request.url)
-        product_info = parser.get_product_info()  # предполагаем, что это синхронный метод
+        product_info = parser.get_product_info()
 
-        # Формируем ответ (как в Kafka-версии)
         response_data = {
             "request_id": request.request_id or str(uuid.uuid4()),
             "user_id": request.user_id,
