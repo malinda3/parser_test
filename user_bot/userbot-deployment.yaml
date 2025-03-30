@@ -23,5 +23,5 @@ spec:
             - name: API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: telegram-bot-api-key
+                  name: telegram-api-test-key
                   key: API_KEY
