@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: parser
-          image: parser:latest  # Локальный образ
-          imagePullPolicy: Never  # Будет использовать только локальный образ
+          image: parser:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
