@@ -12,12 +12,12 @@ endef
 
 define deploy_service
 	@echo "Deploying $(1) to Kubernetes..."
-	kubectl apply -f $(2)/$(1).yaml
+	kubectl apply -f $(2)
 endef
 
 define delete_service
 	@echo "Deleting $(1) from Kubernetes..."
-	kubectl delete -f $(2)/$(1).yaml
+	kubectl delete -f $(2)
 	docker rmi $(1):latest -f || true
 endef
 
