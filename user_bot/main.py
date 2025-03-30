@@ -63,6 +63,7 @@ async def handle_message(update: Update, context: CallbackContext):
         return
 
     try:
+        # Отправляем запрос на внешний API, который передаст информацию о товаре
         response = requests.post(API_URL, json={"url": text})
 
         if response.status_code != 200:
@@ -80,6 +81,7 @@ async def handle_message(update: Update, context: CallbackContext):
         name = product_info.get("Name", "Неизвестно")
         price = product_info.get("Price", "Неизвестно")
 
+        # Отправляем информацию о товаре в Telegram чат
         await update.message.reply_text(f"Название: {name}\nЦена: {price}")
 
     except requests.RequestException as e:
@@ -90,9 +92,11 @@ async def handle_message(update: Update, context: CallbackContext):
 def main():
     application = Application.builder().token(BOT_TOKEN).build()
 
+    # Обработчики команд и сообщений
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+    # Запуск бота
     application.run_polling()
 
 # Запуск бота
