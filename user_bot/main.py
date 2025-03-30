@@ -62,9 +62,23 @@ async def handle_message(update: Update, context: CallbackContext):
         await update.message.reply_text("API_URL не задан. Запросы к API пропущены.")
         return
 
+    # Создаем тело запроса
+    request_data = {
+        "url": text,
+        "request_id": "1",  # Пример значения request_id
+        "user_id": "1377"  # Пример значения user_id
+    }
+
+    # Логируем тело запроса
+    logger.info(f"Sending request to {API_URL} with data: {request_data}")
+
     try:
         # Отправляем запрос на внешний API, который передаст информацию о товаре
-        response = requests.post(API_URL, json={"url": text})
+        response = requests.post(API_URL, json=request_data)
+
+        # Логируем сам запрос и его ответ
+        logger.info(f"Request sent to {API_URL} with response status: {response.status_code}")
+        logger.info(f"Response content: {response.text}")
 
         if response.status_code != 200:
             await update.message.reply_text(f"Ошибка API. Статус: {response.status_code}")
