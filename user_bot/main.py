@@ -20,6 +20,13 @@ if not API_URL:
 
 logger.info(f"Bot token set: {BOT_TOKEN[:4]}...{BOT_TOKEN[-4:]}") 
 
+current_request_id = 0
+
+def get_next_request_id():
+    global current_request_id
+    current_request_id += 1
+    return current_request_id
+
 def check_bot_token(token: str):
     try:
         bot = requests.get(f"https://api.telegram.org/bot{token}/getMe")
@@ -45,7 +52,6 @@ def is_url(text: str) -> bool:
 async def handle_message(update: Update, context: CallbackContext):
     text = update.message.text
 
-    # Логируем входящий запрос
     logger.info(f"Received message from {update.message.from_user.id}: {text}")
 
     if not is_url(text):
@@ -55,30 +61,22 @@ async def handle_message(update: Update, context: CallbackContext):
         await update.message.reply_text("API_URL не задан. Запросы к API пропущены.")
         return
 
-    # Получаем реальные данные пользователя из update
     user_id = update.message.from_user.id
-    username = update.message.from_user.username or "Неизвестно"  # Если нет username, используем "Неизвестно"
-    first_name = update.message.from_user.first_name or "Неизвестно"  # Если нет имени, используем "Неизвестно"
-    last_name = update.message.from_user.last_name or "Неизвестно"  # Если нет фамилии, используем "Неизвестно"
+    username = update.message.from_user.username or "Неизвестно"
+    first_name = update.message.from_user.first_name or "Неизвестно"
+    last_name = update.message.from_user.last_name or "Неизвестно"
 
-    # Создаем request_data с реальными данными пользователя
     request_data = {
-        "url": text,
-        "request_id": str(user_id),  # Используем id пользователя как request_id (или создаем уникальный)
-        "user_id": user_id,  # Реальный user_id из Telegram
-        "username": username,  # Добавляем username пользователя
-        "first_name": first_name,  # Добавляем имя пользователя
-        "last_name": last_name  # Добавляем фамилию пользователя
+    "url": text,
+    "request_id": str(get_next_request_id()),
+    "user_id": user_id,
     }
 
-    # Логируем тело запроса
     logger.info(f"Sending request to {API_URL} with data: {request_data}")
 
     try:
-        # Отправляем запрос на внешний API, который передаст информацию о товаре
         response = requests.post(API_URL, json=request_data)
 
-        # Логируем сам запрос и его ответ
         logger.info(f"Request sent to {API_URL} with response status: {response.status_code}")
         logger.info(f"Response content: {response.text}")
 
@@ -97,7 +95,6 @@ async def handle_message(update: Update, context: CallbackContext):
         name = product_info.get("Name", "Неизвестно")
         price = product_info.get("Price", "Неизвестно")
 
-        # Отправляем информацию о товаре в Telegram чат
         await update.message.reply_text(f"Название: {name}\nЦена: {price}")
 
     except requests.RequestException as e:
@@ -105,17 +102,13 @@ async def handle_message(update: Update, context: CallbackContext):
         await update.message.reply_text("Произошла ошибка при запросе к API.")
 
 
-# Главная функция запуска бота
 def main():
     application = Application.builder().token(BOT_TOKEN).build()
 
-    # Обработчики команд и сообщений
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Запуск бота
     application.run_polling()
 
-# Запуск бота
 if __name__ == '__main__':
     main()
