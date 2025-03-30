@@ -17,6 +17,6 @@ spec:
         - name: bot
           image: telegram-bot:latest
           imagePullPolicy: Never
-      env:
-          - name: API_URL
-            value: "http://parser.kafka.svc.cluster.local:8000/parse"
+          env:
+            - name: API_URL
+              value: "http://parser.kafka.svc.cluster.local:8000/parse"
