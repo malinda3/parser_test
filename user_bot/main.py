@@ -69,7 +69,7 @@ async def handle_message(update: Update, context: CallbackContext):
     request_data = {
     "url": text,
     "request_id": str(get_next_request_id()),
-    "user_id": user_id,
+    "user_id": username,
     }
 
     logger.info(f"Sending request to {API_URL} with data: {request_data}")
