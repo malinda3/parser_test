@@ -4,10 +4,10 @@ WORKDIR /app
 
 COPY requirements.txt ./
 COPY .env ./
-COPY bot.py ./
+COPY main.py ./
 
 # Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Команда для запуска бота
-CMD ["python", "bot.py"]
+CMD ["python", "main.py"]
