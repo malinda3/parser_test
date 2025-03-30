@@ -20,3 +20,8 @@ spec:
           env:
             - name: API_URL
               value: "http://parser.kafka.svc.cluster.local:8000/parse"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: telegram-bot-api-key
+                  key: API_KEY
