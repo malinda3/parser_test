@@ -1,7 +1,7 @@
 SERVICES := parser telegram-bot
 IMAGE_NAMES := parser telegram-bot
 PARSER_PATH := ./parser
-BOT_PATH := ./bot
+BOT_PATH := ./user_bot
 
 define build_image
 	@echo "Building Docker image for $(1)..."
