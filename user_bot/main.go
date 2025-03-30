@@ -1,9 +1,9 @@
-
 package main
 
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -25,6 +25,13 @@ func main() {
 
 	updates := bot.GetUpdatesChan(u)
 
+	// Check if API_URL is set
+	apiURL := os.Getenv("API_URL")
+	if apiURL == "" {
+		// Log a warning message and skip API requests
+		log.Println("Warning: API_URL is not set. API requests will be skipped.")
+	}
+
 	for update := range updates {
 		if update.Message == nil || !update.Message.IsCommand() && !isURL(update.Message.Text) {
 			continue
@@ -36,8 +43,18 @@ func main() {
 			continue
 		}
 
+		// If API_URL is not set, skip the API request
+		if apiURL == "" {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "API_URL is not set. Skipping request.")
+			bot.Send(msg)
+			continue
+		}
+
+		log.Printf("Sending request to URL: %s", apiURL)
+		log.Printf("Request payload: %s", `{"url":"`+update.Message.Text+`"}`)
+
 		resp, err := http.Post(
-			os.Getenv("API_URL"),
+			apiURL,
 			"application/json",
 			bytes.NewBufferString(`{"url":"`+update.Message.Text+`"}`),
 		)
@@ -47,15 +64,26 @@ func main() {
 		}
 		defer resp.Body.Close()
 
+		// Log response status and body for debugging
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("API returned status: %v", resp.StatusCode)
+			body, _ := io.ReadAll(resp.Body)
+			log.Printf("Response body: %s", string(body))
+			continue
+		}
+
 		var result struct {
 			ProductInfo struct {
 				Name  string
 				Price string
 			}
 		}
-		json.NewDecoder(resp.Body).Decode(&result)
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			log.Printf("Error decoding response body: %v", err)
+			continue
+		}
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, 
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID,
 			"Название: "+result.ProductInfo.Name+"\nЦена: "+result.ProductInfo.Price)
 		bot.Send(msg)
 	}
