@@ -88,8 +88,8 @@ async def handle_message(update: Update, context: CallbackContext):
         data = response.json()
 
         product_info = data["product_info"]
-        name = product_info.get("Name", "Неизвестно")
-        price = product_info.get("Price", "Неизвестно")
+        name = product_info.get("name", "Неизвестно")
+        price = product_info.get("price", "Неизвестно")
 
         await update.message.reply_text(f"Название: {name}\nЦена: {price}")
 
