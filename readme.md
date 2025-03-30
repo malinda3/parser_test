@@ -15,6 +15,7 @@ move whole project to selfhosted cluster
 move to registry, so it can help me with moving to ci later
 
 move to ci and make development easier
+##### *probably required to close goals in this orderes, to make development process more inertly
 ## Installing to the local machine:
 ### Step 1)
 
