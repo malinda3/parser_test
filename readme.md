@@ -2,7 +2,7 @@
 in this version i want to make completely working and ready to deply in a single cluster app.
 first, and complete feature with newsletter bot
 ## Requirements
-
+tbd
 ## Ready:
 parser functional moved to api, probably working faster than kafka
 
