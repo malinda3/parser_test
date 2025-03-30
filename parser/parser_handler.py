@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from ProductParser import ProductParser
 from pydantic import BaseModel
+from typing import Union
 import uuid
 
 logging.basicConfig(level=logging.INFO)
@@ -13,8 +14,8 @@ app = FastAPI()
 
 class ParseRequest(BaseModel):
     url: str
-    request_id: str
-    user_id: str
+    request_id: Union[int, str]
+    user_id: Union[int, str]
 
 class ParseResponse(BaseModel):
     request_id: str
