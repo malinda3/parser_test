@@ -25,6 +25,7 @@ class ParseRequest(BaseModel):
     url: str
     request_id: Union[int, str]
     user_id: Union[int, str]
+    id: Union[int, str]
 
 class ParseResponse(BaseModel):
     request_id: str
@@ -66,7 +67,7 @@ async def parse_product(request: ParseRequest):
         conn = await get_db_connection()
         try:
             await save_to_db(conn, 
-                  request.user_id,
+                  request.id,
                   response_data["product_info"]) 
         finally:
             await conn.close()
