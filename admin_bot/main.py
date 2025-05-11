@@ -34,15 +34,19 @@ async def echo(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(update.message.text)
 
 async def test_handler(update: Update, context: CallbackContext) -> None:
+    ALLOWED_USER_IDS = {5876847299, 1845807637}
+    
+    user_id = update.effective_user.id
+    
+    if user_id not in ALLOWED_USER_IDS:
+        await update.message.reply_text("У вас нет прав для выполнения этой команды")
+        return
     try:
-        # Подключаемся к БД
         connection = await asyncpg.connect(**DB_CONFIG)
         
-        # Получаем список user_id из таблицы parsed_data
-        query = "SELECT DISTINCT user_id FROM parsed_data ORDER BY user_id"
+        query = "SELECT DISTINCT user_id FROM parsed_data"
         user_ids: List[str] = await connection.fetch(query)
         
-        # Форматируем результат
         if user_ids:
             response = "Список user_id:\n" + "\n".join([user['user_id'] for user in user_ids])
         else:
@@ -68,8 +72,7 @@ def setup_handlers(application: Application) -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
     application.add_error_handler(error_handler)
 
-def main() -> None:
-    """Основная функция запуска бота"""
+if __name__ == '__main__':
     try:
         BOT_TOKEN = os.getenv("BOT_TOKEN")
         if not BOT_TOKEN:
@@ -85,6 +88,3 @@ def main() -> None:
         logger.error("Неверный токен бота! Пожалуйста, проверьте токен.")
     except Exception as e:
         logger.error(f"Ошибка: {e}")
-
-if __name__ == '__main__':
-    main()
