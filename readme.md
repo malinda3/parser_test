@@ -29,6 +29,10 @@ create secret with you telegram bot token, take it from @BotFather
 ```
 $ kubectl create secret generic telegram-api-test-key --from-literal=API_KEY=<key> --namespace=kafka
 $ kubectl create secret generic telegram-api-admin-test-key --from-literal=API_KEY=<admin_key> --namespace=kafka
+
+and dont forget a secret with allowed users id for admin-bot
+
+$kubectl create secret generic allowed-users --from-literal=ALLOWED_USER_IDS="123456789,976543213" -n kafka
 ```
 ### Step 3)
 build images and deploy them to cluster

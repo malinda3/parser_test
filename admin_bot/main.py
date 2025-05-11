@@ -4,7 +4,7 @@ from telegram.error import InvalidToken
 import logging
 import os
 import asyncpg
-from typing import List
+from typing import List, Set
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -19,7 +19,7 @@ DB_CONFIG = {
     "host": "postgres",
     "port": "5432"
 }
-
+ALLOWED_USER_IDS = set(map(int, os.getenv('ALLOWED_USER_IDS', '').split(',')))
 START_MESSAGE = """
 
 Доступные команды:
@@ -34,8 +34,6 @@ async def echo(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(update.message.text)
 
 async def test_handler(update: Update, context: CallbackContext) -> None:
-    ALLOWED_USER_IDS = {5876847299, 1845807637}
-    
     user_id = update.effective_user.id
     
     if user_id not in ALLOWED_USER_IDS:
