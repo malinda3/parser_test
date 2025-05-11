@@ -33,7 +33,6 @@ DB_CONFIG = {
 GET_TEXT, GET_PHOTO_URL, CONFIRM_SEND = range(3)
 ALLOWED_USER_IDS = {5876847299, 1845807637}  # Ваши ID админов
 
-# Клавиатуры
 def get_confirm_keyboard(with_photo: bool) -> InlineKeyboardMarkup:
     buttons = []
     if with_photo:
@@ -42,7 +41,6 @@ def get_confirm_keyboard(with_photo: bool) -> InlineKeyboardMarkup:
     buttons.append([InlineKeyboardButton("❌ Отменить", callback_data='cancel')])
     return InlineKeyboardMarkup(buttons)
 
-# Обработчики команд
 async def retranslate_start(update: Update, context: CallbackContext) -> int:
     """Начало процесса ретрансляции"""
     if update.effective_user.id not in ALLOWED_USER_IDS:
@@ -69,7 +67,7 @@ async def handle_photo_url(update: Update, context: CallbackContext) -> int:
     """Обработка URL фото"""
     if update.message.text.startswith(('http://', 'https://')):
         context.user_data['photo_url'] = update.message.text
-        preview_msg = f"📝 Текст: {context.user_data['message_text']}\n🖼 Фото: {update.message.text}"
+        preview_msg = f"📝 Текст:\n---------------------------------------\n {context.user_data['message_text']}\n\n---------------------------------------\n🖼 Фото: {update.message.text}"
     else:
         await update.message.reply_text("❌ Некорректный URL. Используйте http:// или https://")
         return GET_PHOTO_URL
