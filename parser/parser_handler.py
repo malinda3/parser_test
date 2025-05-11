@@ -36,15 +36,12 @@ async def get_db_connection():
     """Создает подключение к БД"""
     return await asyncpg.connect(**DB_CONFIG)
 
-async def save_to_db(conn, user_id: str, product_info: dict):
-    """Использует только существующие поля таблицы"""
+async def save_to_db(conn, user_id: Union[int, str], product_info: dict):
     query = """
     INSERT INTO parsed_data (user_id, content, created_at)
     VALUES ($1, $2, NOW())
     """
-    await conn.execute(query, 
-                     user_id, 
-                     json.dumps(product_info))
+    await conn.execute(query, str(user_id), json.dumps(product_info))
 
 @app.post("/parse")
 async def parse_product(request: ParseRequest):
@@ -68,7 +65,8 @@ async def parse_product(request: ParseRequest):
         try:
             await save_to_db(conn, 
                   request.id,
-                  response_data["product_info"]) 
+                  response_data["product_info"])
+            
         finally:
             await conn.close()
 
