@@ -55,17 +55,18 @@ async def parse_product(request: ParseRequest):
 
         parser = ProductParser(request.url)
         product_info = parser.get_product_info()
-
+    
         response_data = {
             "request_id": request.request_id or str(uuid.uuid4()),
             "user_id": request.user_id,
             "product_info": product_info
         }
-
+        print(response_data)
+        print(request)
         conn = await get_db_connection()
         try:
             await save_to_db(conn, 
-                  request.id,
+                  request.user_id,
                   response_data["product_info"]) 
         finally:
             await conn.close()
