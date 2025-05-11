@@ -86,7 +86,7 @@ async def retranslate_message(update: Update, context: CallbackContext) -> int:
         
         # Если есть фото - показываем его
         if 'media' in context.user_data:
-            await update.message.reply_photo(
+            await update.message.send_photo(
                 photo=context.user_data['media'],
                 caption=preview_text,
                 reply_markup=InlineKeyboardMarkup([
@@ -95,7 +95,7 @@ async def retranslate_message(update: Update, context: CallbackContext) -> int:
                 ])
             )
         else:
-            await update.message.reply_text(
+            await update.message.send_text(
                 preview_text,
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("✅ Да", callback_data='confirm')],
