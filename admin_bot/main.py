@@ -30,7 +30,13 @@ DB_CONFIG = {
 }
 
 GET_TEXT, GET_PHOTO_URL, CONFIRM_SEND = range(3)
-ALLOWED_USER_IDS = os.getenv("ALLOWED_USER_IDS", "")
+def load_allowed_users() -> set[int]:
+    users_str = os.getenv("ALLOWED_USER_IDS", "")
+    if not users_str:
+        return set()
+    return {int(user_id.strip()) for user_id in users_str.split(",")}
+
+ALLOWED_USER_IDS = load_allowed_users()
 
 def get_confirm_keyboard(with_photo: bool) -> InlineKeyboardMarkup:
     buttons = []
