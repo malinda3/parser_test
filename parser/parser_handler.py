@@ -65,7 +65,7 @@ async def parse_product(request: ParseRequest):
         conn = await get_db_connection()
         try:
             await save_to_db(conn, 
-                  response_data["user_id"],
+                  request.chat_id,
                   response_data["product_info"]) 
         finally:
             await conn.close()
