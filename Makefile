@@ -2,6 +2,7 @@ SERVICES := parser telegram-bot
 IMAGE_NAMES := parser telegram-bot
 PARSER_PATH := ./parser
 BOT_PATH := ./user_bot
+POSTGRES_PATH := ./postgres
 
 define build_image
 	@echo "Building Docker image for $(1)..."
@@ -44,11 +45,14 @@ deploy-parser:
 deploy-bot:
 	$(call deploy_service,telegram-bot,$(BOT_PATH))
 
+deploy-postgres:
+	$(call deploy_service,postgres,$(POSTGRES_PATH))
+
 create-namespace:
 	@echo "Creating namespace kafka if not exists..."
 	kubectl create namespace kafka || true
 
-deploy: create-namespace build deploy-parser deploy-bot
+deploy: create-namespace build deploy-parser deploy-bot deploy-postgres
 
 # DELETE TARGETS
 delete-parser:
@@ -57,12 +61,15 @@ delete-parser:
 delete-bot:
 	$(call delete_service,telegram-bot,$(BOT_PATH))
 
-delete: delete-parser delete-bot
+delete-bot:
+	$(call delete_service,postgres,$(POSTGRES_PATH))
+
+delete: delete-parser delete-bot delete-postgres
 
 # REBUILD TARGETS
-rebuild-parser: delete-parser build-parser deploy-parser
+rebuild-parser: delete-parser build-parser deploy-parser deploy-postgres
 
-rebuild-bot: delete-bot build-bot deploy-bot
+rebuild-bot: delete-bot build-bot deploy-bot deploy-postgres
 
 rebuild: delete build deploy
 
