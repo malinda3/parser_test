@@ -29,9 +29,8 @@ DB_CONFIG = {
     "port": "5432"
 }
 
-# Состояния ConversationHandler
 GET_TEXT, GET_PHOTO_URL, CONFIRM_SEND = range(3)
-ALLOWED_USER_IDS = {5876847299, 1845807637}  # Ваши ID админов
+ALLOWED_USER_IDS = os.getenv("ALLOWED_USER_IDS", "")
 
 def get_confirm_keyboard(with_photo: bool) -> InlineKeyboardMarkup:
     buttons = []

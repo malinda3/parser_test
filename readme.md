@@ -1,54 +1,62 @@
 # v0.1
-in this version i want to make completely working and ready to deply in a single cluster app.
+
+in this version i want to make completely working and ready to deploy in a single cluster app.
 first, and complete feature with newsletter bot
 ## Requirements
 tbd
 ## Ready:
-parser functional moved to api, probably working faster than kafka
-
-added simple tg bot for iteraction with parser, will be user bot lately, working with just 2 pods(user-bot, parser) 
+- Parser feature fully moved from old version to a new one
+- Newsletter feature probably ready, want to test it on next week(13.05.25)
+- all splitted to microservices, each service performs its specific functions.
+## Microservices functions
+1) User Bot - allows user to check price, just by sending link.
+2) Parser - bussiness logic, that takes info from page and send it to user bot.
+3) Admin Bot - allows to use newsletter featuere that translate some messages between users.
+4) Postgres - database, that admin bot and user bot uses 
 ## Next goal:
-Connect sqlit3 and start developing newsletter engine
-## Future golas:
-move whole project to selfhosted cluster
+- test newsletter feature
 
-move to registry, so it can help me with moving to ci later
+- make some security changes 
+## Future goals:
+- move whole project to selfhosted cluster
 
-move to ci and make development easier
-##### *probably required to close goals in this orderes, to make development process more inertly
+- move to registry, so it can help me with moving to ci later
+
+- move to ci and make development easier
 ## Installing to the local machine:
-### Step 1)
-
-prepare cluster(k3d used in my version)
+1) prepare cluster(k3d used in my version, because its still not works with registry)
 ```
 $ make install-deps && make init-cluster && make create-namespace
 ```
-### Step 2) 
-
-create secret with you telegram bot token, take it from @BotFather
+2)  create 2 secrets with you telegram bot token, and a secret with allowed users ids for admin-bot
 ```
-$ kubectl create secret generic telegram-api-test-key --from-literal=API_KEY=<key> --namespace=kafka
-$ kubectl create secret generic telegram-api-admin-test-key --from-literal=API_KEY=<admin_key> --namespace=kafka
-
-and dont forget a secret with allowed users id for admin-bot
-
-$kubectl create secret generic allowed-users --from-literal=ALLOWED_USER_IDS="123456789,976543213" -n kafka
+$ kubectl create secret generic telegram-api-test-key --from-literal=API_KEY=<userbot_key> --namespace=kafka
+$ kubectl create secret generic telegram-api-admin-test-key --from-literal=API_KEY=<adminbot_key> --namespace=kafka
+$ kubectl create secret generic allowed-users --from-literal=ALLOWED_USER_IDS="123456789,976543213" --namespace=kafka
 ```
 ### Step 3)
 build images and deploy them to cluster
 ```
-$ make build-bot && make build-parser
-$ make deploy-bot && make deploy-parser
+$ make build
+$ make deploy
 ```
 
 so you can see that both services running and configured with you secret
 
 ```
 $ kubectl get pods -n kafka
-NAME                            READY   STATUS    RESTARTS   AGE
-parser-f7d4d7984-4w5sv          1/1     Running   0          26m
-telegram-bot-67489f49b5-vtcj9   1/1     Running   0          13m
+NAME                                  READY   STATUS    RESTARTS   AGE
+admin-telegram-bot-769d5d8f49-g5jzn   1/1     Running   0          2m49s
+parser-f7d4d7984-wn7lq                1/1     Running   0          118m
+postgres-0                            1/1     Running   0          4h46m
+telegram-bot-5d8d4b6767-xkvm4         1/1     Running   0          135m
 $ kubectl get secrets -n kafka
-NAME                    TYPE     DATA   AGE
-telegram-api-test-key   Opaque   1      52m
+NAME                          TYPE     DATA   AGE
+allowed-users                 Opaque   1      3h10m
+telegram-api-admin-test-key   Opaque   1      4h22m
+telegram-api-test-key         Opaque   1      6h6m
+$ kubectl get svc -n kafka
+NAME       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+parser     ClusterIP   10.43.36.205    <none>        8000/TCP   118m
+postgres   ClusterIP   10.43.168.192   <none>        5432/TCP   4h46m
 ```
