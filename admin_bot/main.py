@@ -118,37 +118,42 @@ async def retranslate_confirm(update: Update, context: CallbackContext) -> int:
     if query.data == 'confirm':
         try:
             connection = await asyncpg.connect(**DB_CONFIG)
-            user_ids = await connection.fetch("SELECT DISTINCT user_id FROM parsed_data")
+            users = await connection.fetch("SELECT DISTINCT user_id FROM parsed_data")
             
-            if not user_ids:
+            if not users:
                 await query.edit_message_text("❌ В базе данных нет пользователей для рассылки")
                 return ConversationHandler.END
             
             success = 0
             failed = 0
-            message = context.user_data.get('message_to_send', '')
+            message = context.user_data.get('message_to_send', '')[:1024]  # Обрезаем для caption
             media = context.user_data.get('media')
             
-            await query.edit_message_text(f"🔄 Начинаю рассылку для {len(user_ids)} пользователей...")
+            await query.edit_message_text(f"🔄 Начинаю рассылку для {len(users)} пользователей...")
             
-            for user in user_ids:
+            for user in users:
                 try:
+                    if not str(user['user_id']).isdigit():
+                        logger.error(f"Некорректный user_id: {user['user_id']}")
+                        continue
+                        
+                    chat_id = int(user['user_id'])
+                    
                     if media:
-                        # Отправка фото с текстом
                         await context.bot.send_photo(
-                            chat_id=user['user_id'],
+                            chat_id=chat_id,
                             photo=media,
-                            caption=message
+                            caption=message or " ",  # Пустая подпись если текст отсутствует
+                            parse_mode="HTML"  # Добавьте при необходимости
                         )
                     else:
-                        # Отправка только текста
                         await context.bot.send_message(
-                            chat_id=user['user_id'],
+                            chat_id=chat_id,
                             text=message
                         )
                     success += 1
                 except Exception as e:
-                    logger.error(f"Ошибка отправки пользователю {user['user_id']}: {e}")
+                    logger.error(f"Ошибка отправки: {e}", exc_info=True)
                     failed += 1
             
             await query.edit_message_text(
@@ -157,7 +162,7 @@ async def retranslate_confirm(update: Update, context: CallbackContext) -> int:
                 f"Не удалось: {failed}"
             )
         except Exception as e:
-            logger.error(f"Ошибка при работе с БД: {e}")
+            logger.error(f"Ошибка при работе с БД: {e}", exc_info=True)
             await query.edit_message_text("❌ Ошибка при получении списка пользователей")
         finally:
             if 'connection' in locals():
