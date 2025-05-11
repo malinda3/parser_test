@@ -23,6 +23,11 @@ spec:
                 secretKeyRef:
                   name: telegram-api-admin-test-key
                   key: API_KEY
+            - name: USER_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: telegram-api-test-key
+                  key: API_KEY
             - name: ALLOWED_USER_IDS
               valueFrom:
                 secretKeyRef:

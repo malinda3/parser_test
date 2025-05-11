@@ -116,16 +116,20 @@ async def confirm_send(update: Update, context: CallbackContext) -> int:
             try:
                 chat_id = int(user['user_id'])
                 if query.data == 'send_with_photo' and photo_url:
-                    await context.bot.send_photo(
+                    temp_bot = Bot(token = (os.getenv("USER_BOT_TOKEN")))
+                    await temp_bot.send_photo(
                         chat_id=chat_id,
                         photo=photo_url,
                         caption=message
                     )
+                    await temp_bot.close() 
                 else:
-                    await context.bot.send_message(
+                    temp_bot = Bot(token = (os.getenv("USER_BOT_TOKEN")))
+                    await temp_bot.send_message(
                         chat_id=chat_id,
                         text=message
                     )
+                    await temp_bot.close()
                 success += 1
             except Exception as e:
                 logger.error(f"Ошибка отправки {user['user_id']}: {e}")
