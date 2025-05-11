@@ -1,10 +1,11 @@
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from telegram.error import InvalidToken
 import logging
 import os
 import asyncpg
 from typing import List, Set
+from telegram.ext import ConversationHandler
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -19,13 +20,96 @@ DB_CONFIG = {
     "host": "postgres",
     "port": "5432"
 }
+RETRANSLATE_MESSAGE, CONFIRM_SEND = range(2)
 ALLOWED_USER_IDS = set(map(int, os.getenv('ALLOWED_USER_IDS', '').split(',')))
 START_MESSAGE = """
 
 Доступные команды:
 /start - показать это сообщение
 /test - проверить подключение к БД и получить список пользователей
+/retranslate - спам сообщений 
 """
+async def retranslate_start(update: Update, context: CallbackContext) -> int:
+    """Начало процесса ретрансляции"""
+    if update.effective_user.id not in ALLOWED_USER_IDS:
+        await update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return ConversationHandler.END
+    
+    await update.message.reply_text(
+        "📝 Введите сообщение для рассылки:",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("Отмена", callback_data='cancel')]
+        ])
+    )
+    return RETRANSLATE_MESSAGE
+
+async def retranslate_message(update: Update, context: CallbackContext) -> int:
+    """Получение сообщения для рассылки"""
+    context.user_data['message_to_send'] = update.message.text
+    
+    await update.message.reply_text(
+        f"✉️ Сообщение для рассылки:\n\n{update.message.text}\n\n"
+        f"Отправить это сообщение всем пользователям?",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Да", callback_data='confirm')],
+            [InlineKeyboardButton("❌ Нет", callback_data='cancel')]
+        ])
+    )
+    return CONFIRM_SEND
+
+async def retranslate_confirm(update: Update, context: CallbackContext) -> int:
+    """Подтверждение и отправка сообщения"""
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == 'confirm':
+        try:
+            connection = await asyncpg.connect(**DB_CONFIG)
+            user_ids = await connection.fetch("SELECT DISTINCT user_id FROM parsed_data")
+            
+            if not user_ids:
+                await query.edit_message_text("❌ В базе данных нет пользователей для рассылки")
+                return ConversationHandler.END
+            
+            success = 0
+            failed = 0
+            message = context.user_data['message_to_send']
+            
+            await query.edit_message_text(f"🔄 Начинаю рассылку для {len(user_ids)} пользователей...")
+            
+            for user in user_ids:
+                try:
+                    await context.bot.send_message(
+                        chat_id=user['user_id'],
+                        text=message
+                    )
+                    success += 1
+                except Exception as e:
+                    logger.error(f"Ошибка отправки пользователю {user['user_id']}: {e}")
+                    failed += 1
+            
+            await query.edit_message_text(
+                f"✅ Рассылка завершена:\n"
+                f"Успешно: {success}\n"
+                f"Не удалось: {failed}"
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при работе с БД: {e}")
+            await query.edit_message_text("❌ Ошибка при получении списка пользователей")
+        finally:
+            if 'connection' in locals():
+                await connection.close()
+    else:
+        await query.edit_message_text("❌ Рассылка отменена")
+    
+    return ConversationHandler.END
+
+async def retranslate_cancel(update: Update, context: CallbackContext) -> int:
+    """Отмена рассылки"""
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text("❌ Рассылка отменена")
+    return ConversationHandler.END
 
 async def send_start_message(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(START_MESSAGE)
@@ -64,7 +148,18 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
     logger.error(f'Ошибка при обработке сообщения: {context.error}')
 
 def setup_handlers(application: Application) -> None:
-    """Настройка обработчиков команд"""
+    """Обновленная настройка обработчиков"""
+    retranslate_handler = ConversationHandler(
+        entry_points=[CommandHandler('retranslate', retranslate_start)],
+        states={
+            RETRANSLATE_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, retranslate_message)],
+            CONFIRM_SEND: [CallbackQueryHandler(retranslate_confirm, pattern='^confirm$'),
+                          CallbackQueryHandler(retranslate_cancel, pattern='^cancel$')]
+        },
+        fallbacks=[CommandHandler('cancel', retranslate_cancel)]
+    )
+    
+    application.add_handler(retranslate_handler)
     application.add_handler(CommandHandler("start", send_start_message))
     application.add_handler(CommandHandler("test", test_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
