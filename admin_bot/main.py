@@ -3,6 +3,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from telegram.error import InvalidToken
 import logging
 import os
+import asyncpg
+from typing import List
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -10,26 +12,71 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def start(update: Update, context: CallbackContext) -> None:
-    user = update.effective_user
-    await update.message.reply_text(f"Привет, {user.first_name}! Я эхо-бот. Просто напиши мне что-нибудь, и я повторю это.")
+DB_CONFIG = {
+    "user": "admin",
+    "password": "test123",
+    "database": "parserdb",
+    "host": "postgres",
+    "port": "5432"
+}
+
+START_MESSAGE = """
+
+Доступные команды:
+/start - показать это сообщение
+/test - проверить подключение к БД и получить список пользователей
+"""
+
+async def send_start_message(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text(START_MESSAGE)
 
 async def echo(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(update.message.text)
 
+async def test_handler(update: Update, context: CallbackContext) -> None:
+    try:
+        # Подключаемся к БД
+        connection = await asyncpg.connect(**DB_CONFIG)
+        
+        # Получаем список user_id из таблицы parsed_data
+        query = "SELECT DISTINCT user_id FROM parsed_data ORDER BY user_id"
+        user_ids: List[str] = await connection.fetch(query)
+        
+        # Форматируем результат
+        if user_ids:
+            response = "Список user_id:\n" + "\n".join([user['user_id'] for user in user_ids])
+        else:
+            response = "В базе данных нет записей"
+        
+        await update.message.reply_text(response)
+        
+    except Exception as e:
+        logger.error(f"Ошибка при работе с БД: {e}")
+        await update.message.reply_text(f"Ошибка при подключении к БД: {e}")
+    finally:
+        if 'connection' in locals():
+            await connection.close()
+
 async def error_handler(update: Update, context: CallbackContext) -> None:
+    """Обработчик ошибок"""
     logger.error(f'Ошибка при обработке сообщения: {context.error}')
 
+def setup_handlers(application: Application) -> None:
+    """Настройка обработчиков команд"""
+    application.add_handler(CommandHandler("start", send_start_message))
+    application.add_handler(CommandHandler("test", test_handler))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    application.add_error_handler(error_handler)
+
 def main() -> None:
+    """Основная функция запуска бота"""
     try:
         BOT_TOKEN = os.getenv("BOT_TOKEN")
+        if not BOT_TOKEN:
+            raise ValueError("Не указан токен бота в переменной окружения BOT_TOKEN")
+            
         application = Application.builder().token(BOT_TOKEN).build()
-        
-        application.add_handler(CommandHandler("start", start))
-        
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
-        
-        application.add_error_handler(error_handler)
+        setup_handlers(application)
         
         logger.info("Бот запущен...")
         application.run_polling()
