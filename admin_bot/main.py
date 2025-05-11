@@ -28,8 +28,9 @@ DB_CONFIG = {
     "host": "postgres",
     "port": "5432"
 }
-
+# состояния бота при /retranslate
 GET_TEXT, GET_PHOTO_URL, CONFIRM_SEND = range(3)
+# Загрузка секрета с юзерами
 def load_allowed_users() -> set[int]:
     users_str = os.getenv("ALLOWED_USER_IDS", "")
     if not users_str:
