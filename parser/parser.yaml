@@ -27,6 +27,7 @@ metadata:
   name: parser
   namespace: kafka
 spec:
+  type: ClusterIP
   selector:
     app: parser
   ports:
