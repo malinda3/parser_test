@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres
+  namespace: kafka
 spec:
   serviceName: postgres
   replicas: 1
@@ -56,6 +57,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
+  namespace: kafka
 spec:
   selector:
     app: postgres
@@ -67,6 +69,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-init-script
+  namespace: kafka
 data:
   init.sql: |
     CREATE TABLE IF NOT EXISTS parsed_data (
