@@ -17,6 +17,8 @@ tbd
 - test newsletter feature
 
 - make some security changes 
+## Problems:
+- Engine doesnt work multiple times, need to restart pod after every message.
 ## Future goals:
 - move whole project to selfhosted cluster
 
