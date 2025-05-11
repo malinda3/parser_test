@@ -56,8 +56,8 @@ async def retranslate_message(update: Update, context: CallbackContext) -> int:
     context.user_data['message_to_send'] = update.message.text
     
     await update.message.reply_text(
-        f"✉️ Сообщение для рассылки:\n\n{update.message.text}\n\n--------------------\n"
-        f"\n--------------------Отправить это сообщение всем пользователям?",
+        f"✉️ Сообщение для рассылки:\n--------------------\n\n{update.message.text}\n\n"
+        f"\n--------------------\nОтправить это сообщение всем пользователям?",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("✅ Да", callback_data='confirm')],
             [InlineKeyboardButton("❌ Нет", callback_data='cancel')]
