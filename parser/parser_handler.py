@@ -6,9 +6,18 @@ from ProductParser import ProductParser
 from pydantic import BaseModel
 from typing import Union
 import uuid
+import asyncpg
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+DB_CONFIG = {
+    "user": "admin",
+    "password": "test123",
+    "database": "parserdb",
+    "host": "postgres",
+    "port": "5432"
+}
 
 app = FastAPI()
 
@@ -21,6 +30,20 @@ class ParseResponse(BaseModel):
     request_id: str
     user_id: str
     product_info: dict
+
+async def get_db_connection():
+    """Создает подключение к БД"""
+    return await asyncpg.connect(**DB_CONFIG)
+
+async def save_to_db(conn, user_id: str, product_info: dict):
+    """Использует только существующие поля таблицы"""
+    query = """
+    INSERT INTO parsed_data (user_id, content, created_at)
+    VALUES ($1, $2, NOW())
+    """
+    await conn.execute(query, 
+                     user_id, 
+                     json.dumps(product_info))
 
 @app.post("/parse")
 async def parse_product(request: ParseRequest):
@@ -38,6 +61,15 @@ async def parse_product(request: ParseRequest):
             "user_id": request.user_id,
             "product_info": product_info
         }
+
+        conn = await get_db_connection()
+        try:
+            await save_to_db(conn, 
+                  response_data["user_id"],
+                  response_data["product_info"]) 
+        finally:
+            await conn.close()
+
 
         logger.info(f"Successfully parsed: {response_data}")
         return JSONResponse(content=response_data)
