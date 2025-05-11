@@ -1,4 +1,4 @@
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -52,21 +52,51 @@ async def retranslate_start(update: Update, context: CallbackContext) -> int:
     return RETRANSLATE_MESSAGE
 
 async def retranslate_message(update: Update, context: CallbackContext) -> int:
-    """Получение сообщения для рассылки"""
-    context.user_data['message_to_send'] = update.message.text
+    """Получение сообщения и медиа для рассылки"""
+    # Сохраняем текст сообщения
+    context.user_data['message_to_send'] = update.message.text if update.message.text else ""
     
-    await update.message.reply_text(
-        f"✉️ Сообщение для рассылки:\n--------------------\n\n{update.message.text}\n\n"
-        f"\n--------------------\nОтправить это сообщение всем пользователям?",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Да", callback_data='confirm')],
-            [InlineKeyboardButton("❌ Нет", callback_data='cancel')]
-        ])
+    # Сохраняем прикрепленные фото (если есть)
+    if update.message.photo:
+        context.user_data['media'] = [
+            photo.file_id for photo in update.message.photo
+        ][-1]  # Берем последнее (самое качественное) фото
+    else:
+        context.user_data['media'] = None
+    
+    # Формируем сообщение с предпросмотром
+    preview_text = (
+        f"✉️ Сообщение для рассылки:\n"
+        f"----------------------------------------\n"
+        f"{context.user_data['message_to_send']}\n"
+        f"----------------------------------------\n"
+        f"Прикреплено фото: {'Да' if context.user_data['media'] else 'Нет'}\n\n"
+        f"Отправить это сообщение всем пользователям?"
     )
+    
+    # Если есть фото - показываем его
+    if context.user_data['media']:
+        await update.message.reply_photo(
+            photo=context.user_data['media'],
+            caption=preview_text,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Да", callback_data='confirm')],
+                [InlineKeyboardButton("❌ Нет", callback_data='cancel')]
+            ])
+        )
+    else:
+        await update.message.reply_text(
+            preview_text,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Да", callback_data='confirm')],
+                [InlineKeyboardButton("❌ Нет", callback_data='cancel')]
+            ])
+        )
+    
     return CONFIRM_SEND
 
 async def retranslate_confirm(update: Update, context: CallbackContext) -> int:
-    """Подтверждение и отправка сообщения"""
+    """Подтверждение и отправка сообщения с медиа"""
     query = update.callback_query
     await query.answer()
     
@@ -81,16 +111,26 @@ async def retranslate_confirm(update: Update, context: CallbackContext) -> int:
             
             success = 0
             failed = 0
-            message = context.user_data['message_to_send']
-            await query.edit_message_text(message)
+            message = context.user_data.get('message_to_send', '')
+            media = context.user_data.get('media')
+            
             await query.edit_message_text(f"🔄 Начинаю рассылку для {len(user_ids)} пользователей...")
             
             for user in user_ids:
                 try:
-                    await context.bot.send_message(
-                        chat_id=user['user_id'],
-                        text=message
-                    )
+                    if media:
+                        # Отправка фото с текстом
+                        await context.bot.send_photo(
+                            chat_id=user['user_id'],
+                            photo=media,
+                            caption=message
+                        )
+                    else:
+                        # Отправка только текста
+                        await context.bot.send_message(
+                            chat_id=user['user_id'],
+                            text=message
+                        )
                     success += 1
                 except Exception as e:
                     logger.error(f"Ошибка отправки пользователю {user['user_id']}: {e}")
