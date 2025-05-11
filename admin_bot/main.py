@@ -43,8 +43,11 @@ async def retranslate_start(update: Update, context: CallbackContext) -> int:
         await update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return ConversationHandler.END
     
+    # Очищаем предыдущие данные
+    context.user_data.clear()
+    
     await update.message.reply_text(
-        "📝 Введите сообщение для рассылки:",
+        "📝 Введите сообщение и/или прикрепите фото для рассылки:",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("Отмена", callback_data='cancel')]
         ])
@@ -53,47 +56,59 @@ async def retranslate_start(update: Update, context: CallbackContext) -> int:
 
 async def retranslate_message(update: Update, context: CallbackContext) -> int:
     """Получение сообщения и медиа для рассылки"""
-    # Сохраняем текст сообщения
-    context.user_data['message_to_send'] = update.message.text if update.message.text else ""
-    
-    # Сохраняем прикрепленные фото (если есть)
-    if update.message.photo:
-        context.user_data['media'] = [
-            photo.file_id for photo in update.message.photo
-        ][-1]  # Берем последнее (самое качественное) фото
-    else:
-        context.user_data['media'] = None
-    
-    # Формируем сообщение с предпросмотром
-    preview_text = (
-        f"✉️ Сообщение для рассылки:\n"
-        f"----------------------------------------\n"
-        f"{context.user_data['message_to_send']}\n"
-        f"----------------------------------------\n"
-        f"Прикреплено фото: {'Да' if context.user_data['media'] else 'Нет'}\n\n"
-        f"Отправить это сообщение всем пользователям?"
-    )
-    
-    # Если есть фото - показываем его
-    if context.user_data['media']:
-        await update.message.reply_photo(
-            photo=context.user_data['media'],
-            caption=preview_text,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Да", callback_data='confirm')],
-                [InlineKeyboardButton("❌ Нет", callback_data='cancel')]
-            ])
+    try:
+        # Очищаем предыдущие медиа
+        if 'media' in context.user_data:
+            del context.user_data['media']
+        
+        # Сохраняем текст (если есть)
+        if update.message.text:
+            context.user_data['message_to_send'] = update.message.text
+        
+        # Сохраняем фото (если есть)
+        if update.message.photo:
+            context.user_data['media'] = update.message.photo[-1].file_id  # Берем самое качественное фото
+        
+        # Проверяем, что есть хотя бы текст или фото
+        if not context.user_data.get('message_to_send') and not context.user_data.get('media'):
+            await update.message.reply_text("❌ Нужно отправить текст или фото")
+            return RETRANSLATE_MESSAGE
+        
+        # Формируем сообщение с предпросмотром
+        preview_text = (
+            f"✉️ Сообщение для рассылки:\n"
+            f"----------------------------------------\n"
+            f"{context.user_data.get('message_to_send', '')}\n"
+            f"----------------------------------------\n"
+            f"Прикреплено фото: {'Да' if 'media' in context.user_data else 'Нет'}\n\n"
+            f"Отправить это сообщение всем пользователям?"
         )
-    else:
-        await update.message.reply_text(
-            preview_text,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Да", callback_data='confirm')],
-                [InlineKeyboardButton("❌ Нет", callback_data='cancel')]
-            ])
-        )
+        
+        # Если есть фото - показываем его
+        if 'media' in context.user_data:
+            await update.message.reply_photo(
+                photo=context.user_data['media'],
+                caption=preview_text,
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ Да", callback_data='confirm')],
+                    [InlineKeyboardButton("❌ Нет", callback_data='cancel')]
+                ])
+            )
+        else:
+            await update.message.reply_text(
+                preview_text,
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ Да", callback_data='confirm')],
+                    [InlineKeyboardButton("❌ Нет", callback_data='cancel')]
+                ])
+            )
+        
+        return CONFIRM_SEND
     
-    return CONFIRM_SEND
+    except Exception as e:
+        logger.error(f"Ошибка обработки сообщения: {e}")
+        await update.message.reply_text("❌ Ошибка обработки сообщения")
+        return RETRANSLATE_MESSAGE
 
 async def retranslate_confirm(update: Update, context: CallbackContext) -> int:
     """Подтверждение и отправка сообщения с медиа"""
