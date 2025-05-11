@@ -10,6 +10,8 @@ from telegram.ext import (
 )
 import logging
 import os
+import sys
+import asyncio
 import asyncpg
 from typing import Dict, Any
 
@@ -96,7 +98,6 @@ async def skip_photo(update: Update, context: CallbackContext) -> int:
     return CONFIRM_SEND
 
 async def confirm_send(update: Update, context: CallbackContext) -> int:
-    """Подтверждение и рассылка"""
     query = update.callback_query
     await query.answer()
     
@@ -118,32 +119,42 @@ async def confirm_send(update: Update, context: CallbackContext) -> int:
         
         await query.edit_message_text(f"🔄 Рассылка для {len(users)} пользователей...")
         
-        for user in users:
-            try:
-                chat_id = int(user['user_id'])
-                if query.data == 'send_with_photo' and photo_url:
-                    temp_bot = Bot(token = (os.getenv("USER_BOT_TOKEN")))
-                    await temp_bot.send_photo(
-                        chat_id=chat_id,
-                        photo=photo_url,
-                        caption=message
-                    )
-                    await temp_bot.close() 
-                else:
-                    temp_bot = Bot(token = (os.getenv("USER_BOT_TOKEN")))
-                    await temp_bot.send_message(
-                        chat_id=chat_id,
-                        text=message
-                    )
-                    await temp_bot.close()
-                success += 1
-            except Exception as e:
-                logger.error(f"Ошибка отправки {user['user_id']}: {e}")
-                failed += 1
+        # Создаем временного бота
+        sender_bot = Bot(token=os.getenv("USER_BOT_TOKEN"))
+        
+        try:
+            for user in users:
+                try:
+                    chat_id = int(user['user_id'])
+                    if query.data == 'send_with_photo' and photo_url:
+                        await sender_bot.send_photo(
+                            chat_id=chat_id,
+                            photo=photo_url,
+                            caption=message
+                        )
+                    else:
+                        await sender_bot.send_message(
+                            chat_id=chat_id,
+                            text=message
+                        )
+                    success += 1
+                except Exception as e:
+                    logger.error(f"Ошибка отправки {user['user_id']}: {e}")
+                    failed += 1
+        finally:
+            await sender_bot.close()
         
         await query.edit_message_text(
-            f"✅ Готово!\nУспешно: {success}\nНе удалось: {failed}"
+            f"✅ Рассылка завершена! Успешно: {success}, Ошибки: {failed}\n"
+            "🔄 Приложение перезапускается..."
         )
+        
+        await asyncio.sleep(2)
+        
+        application = context.application
+        await application.stop()
+        execl(sys.executable, sys.executable, *sys.argv)
+        
     except Exception as e:
         logger.error(f"Ошибка рассылки: {e}")
         await query.edit_message_text(f"❌ Ошибка: {str(e)}")
