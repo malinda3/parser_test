@@ -64,7 +64,7 @@ delete-parser:
 delete-bot:
 	$(call delete_service,telegram-bot,$(BOT_PATH))
 
-delete-bot:
+delete-postgres:
 	$(call delete_service,postgres,$(POSTGRES_PATH))
 
 delete: delete-parser delete-bot delete-postgres

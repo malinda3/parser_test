@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
       - name: postgres
-        image: your-registry/postgres-with-init:1.0
+        image: postgres:latest
+        imagePullPolicy: Never 
         env:
         - name: POSTGRES_USER
           value: "admin"
