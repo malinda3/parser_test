@@ -36,7 +36,10 @@ build-parser:
 build-bot:
 	$(call build_image,telegram-bot,$(BOT_PATH))
 
-build: build-parser build-bot
+build-postgres:
+	$(call build_image,postgres,$(POSTGRES_PATH))
+
+build: build-parser build-bot build-postgres
 
 # DEPLOY TARGETS
 deploy-parser:

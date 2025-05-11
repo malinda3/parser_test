@@ -14,26 +14,9 @@ spec:
       labels:
         app: postgres
     spec:
-      initContainers:
-      - name: init-db
-        image: postgres:15-alpine
-        command: 
-          - /bin/sh
-          - -c
-          - |
-            until pg_isready -h 127.0.0.1 -U admin -d parserdb; do
-              sleep 2
-            done
-            psql -h 127.0.0.1 -U admin -d parserdb -f /docker-entrypoint-initdb.d/init.sql
-        env:
-        - name: PGPASSWORD
-          value: "test123"
-        volumeMounts:
-        - name: postgres-init-script
-          mountPath: /docker-entrypoint-initdb.d/
       containers:
       - name: postgres
-        image: postgres:15-alpine
+        image: your-registry/postgres-with-init:1.0
         env:
         - name: POSTGRES_USER
           value: "admin"
@@ -49,9 +32,6 @@ spec:
       volumes:
       - name: postgres-data
         emptyDir: {}
-      - name: postgres-init-script
-        configMap:
-          name: postgres-init-script
 ---
 apiVersion: v1
 kind: Service
@@ -64,17 +44,3 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: postgres-init-script
-  namespace: kafka
-data:
-  init.sql: |
-    CREATE TABLE IF NOT EXISTS parsed_data (
-      id SERIAL PRIMARY KEY,
-      content TEXT,
-      created_at TIMESTAMP DEFAULT NOW(),
-      telegram_id TEXT
-    );
