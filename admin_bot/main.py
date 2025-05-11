@@ -66,14 +66,41 @@ async def retranslate_message(update: Update, context: CallbackContext) -> int:
     return CONFIRM_SEND
 
 async def retranslate_confirm(update: Update, context: CallbackContext) -> int:
-    """Подтверждение и отправка сообщения"""
+    """Подтверждение и отправка сообщения с предварительным просмотром"""
     query = update.callback_query
     await query.answer()
     
     if query.data == 'confirm':
         try:
+            # Получаем сообщение для рассылки
+            message = context.user_data['message_to_send']
+            
+            # Сначала отправляем сообщение в текущий чат для подтверждения
+            preview_text = (
+                "✉️ ПРЕДПРОСМОТР сообщения для рассылки:\n\n"
+                f"{message}\n\n"
+                "Отправить это сообщение всем пользователям?"
+            )
+            
+            # Добавляем кнопки подтверждения после предпросмотра
+            await query.edit_message_text(
+                preview_text,
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ Да, отправить всем", callback_data='confirm_send')],
+                    [InlineKeyboardButton("❌ Нет, отменить", callback_data='cancel')]
+                ])
+            )
+            return CONFIRM_SEND_FINAL  # Новое состояние для финального подтверждения
+
+        except Exception as e:
+            logger.error(f"Ошибка при подготовке сообщения: {e}")
+            await query.edit_message_text("❌ Ошибка при подготовке сообщения")
+            return ConversationHandler.END
+    
+    elif query.data == 'confirm_send':
+        try:
             connection = await asyncpg.connect(**DB_CONFIG)
-            user_ids = await connection.fetch("SELECT DISTINCT user_id FROM parsed_data")
+            user_ids = await connection.fetch("SELECT DISTINCT chat_id FROM parsed_data")  # Используем chat_id вместо user_id
             
             if not user_ids:
                 await query.edit_message_text("❌ В базе данных нет пользователей для рассылки")
@@ -88,12 +115,12 @@ async def retranslate_confirm(update: Update, context: CallbackContext) -> int:
             for user in user_ids:
                 try:
                     await context.bot.send_message(
-                        chat_id=user['user_id'],
+                        chat_id=user['chat_id'],  # Используем chat_id
                         text=message
                     )
                     success += 1
                 except Exception as e:
-                    logger.error(f"Ошибка отправки пользователю {user['user_id']}: {e}")
+                    logger.error(f"Ошибка отправки пользователю {user['chat_id']}: {e}")
                     failed += 1
             
             await query.edit_message_text(
@@ -107,11 +134,11 @@ async def retranslate_confirm(update: Update, context: CallbackContext) -> int:
         finally:
             if 'connection' in locals():
                 await connection.close()
+        return ConversationHandler.END
+    
     else:
         await query.edit_message_text("❌ Рассылка отменена")
-    
-    return ConversationHandler.END
-
+        return ConversationHandler.END
 async def retranslate_cancel(update: Update, context: CallbackContext) -> int:
     """Отмена рассылки"""
     query = update.callback_query
