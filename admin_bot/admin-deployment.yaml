@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-telegram-bot
+  namespace: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-telegram-bot
+  template:
+    metadata:
+      labels:
+        app: admin-telegram-bot
+    spec:
+      containers:
+        - name: admin-telegram-bot
+          image: telegram-admin-bot:latest
+          imagePullPolicy: Never
+          env:
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: telegram-api-admin-test-key
+                  key: API_KEY

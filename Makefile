@@ -3,6 +3,7 @@ IMAGE_NAMES := parser telegram-bot
 PARSER_PATH := ./parser
 BOT_PATH := ./user_bot
 POSTGRES_PATH := ./postgres
+ADMIN_BOT_PATH := ./admin_bot
 
 define build_image
 	@echo "Building Docker image for $(1)..."
@@ -30,6 +31,7 @@ init-cluster:
 	k3d cluster create test
 
 # BUILD TARGETS
+# 1) добавить сборку нового контейнера сюда
 build-parser:
 	$(call build_image,parser,$(PARSER_PATH))
 
@@ -39,9 +41,13 @@ build-bot:
 build-postgres:
 	$(call build_image,postgres,$(POSTGRES_PATH))
 
+build-admin-bot:
+	$(call build_image,telegram-admin-bot,$(ADMIN_BOT_PATH))
+
 build: build-parser build-bot build-postgres
 
 # DEPLOY TARGETS
+# 2) добавить деплой нового контейнера сюда
 deploy-parser:
 	$(call deploy_service,parser,$(PARSER_PATH))
 
@@ -51,13 +57,17 @@ deploy-bot:
 deploy-postgres:
 	$(call deploy_service,postgres,$(POSTGRES_PATH))
 
+deploy-admin-bot:
+	$(call deploy_service,telegram-admin-bot,$(ADMIN_BOT_PATH))
+
 create-namespace:
 	@echo "Creating namespace kafka if not exists..."
 	kubectl create namespace kafka || true
 
-deploy: create-namespace build deploy-parser deploy-bot deploy-postgres
+deploy: create-namespace build deploy-parser deploy-bot deploy-postgres deploy-admin-bot
 
 # DELETE TARGETS
+# 3) Добавить удаленик контейнера сюда 
 delete-parser:
 	$(call delete_service,parser,$(PARSER_PATH))
 
@@ -67,12 +77,17 @@ delete-bot:
 delete-postgres:
 	$(call delete_service,postgres,$(POSTGRES_PATH))
 
-delete: delete-parser delete-bot delete-postgres
+delete-admin-bot:
+	$(call delete_service,telegram-admin-bot,$(ADMIN_BOT_PATH))
+
+delete: delete-parser delete-bot delete-postgres delete-admin-bot
 
 # REBUILD TARGETS
-rebuild-parser: delete-parser build-parser deploy-parser deploy-postgres
-
-rebuild-bot: delete-bot build-bot deploy-bot deploy-postgres
+# 4) Добавить сюда команды для проверки 
+rebuild-parser: delete-parser build-parser deploy-parser 
+rebuild-bot: delete-bot build-bot deploy-bot 
+rebuild-postgres: delete-postgres build-postgres deploy-postgres
+rebuild-admin-bot: delete-admin-bot build-admin-bot deploy-admin-bot
 
 rebuild: delete build deploy
 
