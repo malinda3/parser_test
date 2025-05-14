@@ -53,7 +53,7 @@ jobs:
     - name: Set up kubectl
       uses: azure/setup-kubectl@v1
       with:
-        version: 'v1.23.0' # Можно указать необходимую версию kubectl
+        version: 'v1.23.0'
 
     - name: Set up kubeconfig
       run: |
@@ -66,22 +66,22 @@ jobs:
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-PARSER>|ghcr.io/malinda3/parser_test/parser:${IMAGE_TAG}|g" ./parser/parser.yaml
-        kubectl apply -f ./parser/parser.yaml
+        kubectl apply -f ./parser/parser.yaml -n telegram-bot
 
     - name: Deploy bot
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-BOT>|ghcr.io/malinda3/parser_test/telegram-bot:${IMAGE_TAG}|g" ./user_bot/userbot-deployment.yaml
-        kubectl apply -f ./user_bot/bot-deployment.yaml
+        kubectl apply -f ./user_bot/bot-deployment.yaml -n telegram-bot
 
     - name: Deploy postgres
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:${IMAGE_TAG}|g" ./postgres/postgres-deployment.yaml
-        kubectl apply -f ./postgres/postgres-deployment.yaml
+        kubectl apply -f ./postgres/postgres-deployment.yaml -n telegram-bot
 
     - name: Deploy admin-telegram-bot
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-ADMIN-BOT>|ghcr.io/malinda3/parser_test/telegram-admin-bot:${IMAGE_TAG}|g" ./admin_bot/admin-deployment.yaml
-        kubectl apply -f ./admin_bot/admin-deployment.yaml
+        kubectl apply -f ./admin_bot/admin-deployment.yaml -n telegram-bot
