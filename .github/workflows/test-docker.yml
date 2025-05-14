@@ -1,0 +1,129 @@
+name: CI & Deploy on Master
+
+on:
+  push:
+    branches:
+      - v0.1
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Restore Docker layer cache
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # ======== BUILD IMAGES ==========
+    - name: Build parser image
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        docker buildx build \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
+          --push \
+          -t ghcr.io/malinda3/parser_test/parser:$IMAGE_TAG \
+          ./parser
+
+    - name: Build bot image
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        docker buildx build \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
+          --push \
+          -t ghcr.io/malinda3/parser_test/telegram-bot:$IMAGE_TAG \
+          ./user_bot
+
+    - name: Build postgres image
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        docker buildx build \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
+          --push \
+          -t ghcr.io/malinda3/parser_test/postgres:$IMAGE_TAG \
+          ./postgres
+
+    - name: Build admin-bot image
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        docker buildx build \
+          --cache-from=type=local,src=/tmp/.buildx-cache \
+          --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
+          --push \
+          -t ghcr.io/malinda3/parser_test/telegram-admin-bot:$IMAGE_TAG \
+          ./admin_bot
+
+    - name: Move updated cache
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+    # ========= DEPLOYMENT =========
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v1
+      with:
+        version: 'v1.23.0'
+
+    - name: Set up kubeconfig
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+      env:
+        KUBECONFIG: ${{ secrets.KUBECONFIG }}
+
+    - name: prepare_cluster_secrets
+      run: |
+        kubectl create secret generic telegram-api-test-key \
+          --from-literal=API_KEY="${{ secrets.TELEGRAM_API_TEST_KEY }}" \
+          -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
+
+        kubectl create secret generic telegram-api-admin-test-key \
+          --from-literal=API_KEY="${{ secrets.TELEGRAM_API_ADMIN_TEST_KEY }}" \
+          -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
+
+        kubectl create secret generic allowed-users \
+          --from-literal=ALLOWED_USER_IDS="${{ secrets.MY_ID }},${{ secrets.RUSALE_ADMIN }}" \
+          -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy parser
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-PARSER>|ghcr.io/malinda3/parser_test/parser:$IMAGE_TAG|g" ./parser/parser.yaml
+        kubectl apply -f ./parser/parser.yaml -n telegram-bot
+
+    - name: Deploy bot
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-BOT>|ghcr.io/malinda3/parser_test/telegram-bot:$IMAGE_TAG|g" ./user_bot/userbot-deployment.yaml
+        kubectl apply -f ./user_bot/userbot-deployment.yaml -n telegram-bot
+
+    - name: Deploy postgres
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:$IMAGE_TAG|g" ./postgres/postgres-sts.yaml
+        kubectl apply -f ./postgres/postgres-sts.yaml -n telegram-bot
+
+    - name: Deploy admin-telegram-bot
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-ADMIN-BOT>|ghcr.io/malinda3/parser_test/telegram-admin-bot:$IMAGE_TAG|g" ./admin_bot/admin-deployment.yaml
+        kubectl apply -f ./admin_bot/admin-deployment.yaml -n telegram-bot

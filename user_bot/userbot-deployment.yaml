@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: telegram-bot
-  namespace: kafka
 spec:
   replicas: 1
   selector:
@@ -15,11 +14,10 @@ spec:
     spec:
       containers:
         - name: bot
-          image: telegram-bot:latest
-          imagePullPolicy: Never
+          image: <IMAGE-BOT>
           env:
             - name: API_URL
-              value: "http://parser.kafka.svc.cluster.local:8000/parse"
+              value: "http://parser.telegram-bot.svc.cluster.local:8000/parse"
             - name: BOT_TOKEN
               valueFrom:
                 secretKeyRef:
