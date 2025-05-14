@@ -1,7 +1,7 @@
 GITHUB_USER := malinda3
 GITHUB_REPO := parser_test
 
-IMAGE_NAME := ghcr.io/$(GITHUB_USER)/$(GITHUB_REPO)/$(1):$(IMAGE_TAG)
+IMAGE_NAME := ghcr.io/$(GITHUB_USER)/$(GITHUB_REPO)/$(1)$(IMAGE_TAG)
 
 PARSER_PATH := ./parser
 BOT_PATH := ./user_bot
