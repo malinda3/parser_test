@@ -32,24 +32,28 @@ jobs:
 
     - name: Build and Push parser image
       run: |
-        IMAGE_TAG=$(git rev-parse --short HEAD)
+        IMAGE_TAG=$(date +%Y%m%d%H%M%S)  # Используем текущую дату и время
+        echo "Building and pushing parser image with tag $IMAGE_TAG"
         make -f Makefile.ci build-parser IMAGE_TAG=$IMAGE_TAG
         make -f Makefile.ci push-parser IMAGE_TAG=$IMAGE_TAG
 
     - name: Build and Push bot image
       run: |
-        IMAGE_TAG=$(git rev-parse --short HEAD)
+        IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+        echo "Building and pushing bot image with tag $IMAGE_TAG"
         make -f Makefile.ci build-bot IMAGE_TAG=$IMAGE_TAG
         make -f Makefile.ci push-bot IMAGE_TAG=$IMAGE_TAG
 
     - name: Build and Push postgres image
       run: |
-        IMAGE_TAG=$(git rev-parse --short HEAD)
+        IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+        echo "Building and pushing postgres image with tag $IMAGE_TAG"
         make -f Makefile.ci build-postgres IMAGE_TAG=$IMAGE_TAG
         make -f Makefile.ci push-postgres IMAGE_TAG=$IMAGE_TAG
 
     - name: Build and Push admin-bot image
       run: |
-        IMAGE_TAG=$(git rev-parse --short HEAD)
+        IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+        echo "Building and pushing admin-bot image with tag $IMAGE_TAG"
         make -f Makefile.ci build-admin-bot IMAGE_TAG=$IMAGE_TAG
         make -f Makefile.ci push-admin-bot IMAGE_TAG=$IMAGE_TAG
