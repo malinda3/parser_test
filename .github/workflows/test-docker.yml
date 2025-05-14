@@ -1,12 +1,9 @@
-name: Manual CI & Deploy
+name: CI & Deploy on Master
 
 on:
-  workflow_dispatch:
-    inputs:
-      deploy:
-        description: 'Deploy to Kubernetes after build'
-        required: true
-        default: 'false'
+  push:
+    branches:
+      - v0.1
 
 jobs:
   build-and-deploy:
@@ -82,13 +79,11 @@ jobs:
 
     # ========= DEPLOYMENT =========
     - name: Set up kubectl
-      if: ${{ inputs.deploy == 'true' }}
       uses: azure/setup-kubectl@v1
       with:
         version: 'v1.23.0'
 
     - name: Set up kubeconfig
-      if: ${{ inputs.deploy == 'true' }}
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
@@ -96,28 +91,24 @@ jobs:
         KUBECONFIG: ${{ secrets.KUBECONFIG }}
 
     - name: Deploy parser
-      if: ${{ inputs.deploy == 'true' }}
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-PARSER>|ghcr.io/malinda3/parser_test/parser:$IMAGE_TAG|g" ./parser/parser.yaml
         kubectl apply -f ./parser/parser.yaml -n telegram-bot
 
     - name: Deploy bot
-      if: ${{ inputs.deploy == 'true' }}
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-BOT>|ghcr.io/malinda3/parser_test/telegram-bot:$IMAGE_TAG|g" ./user_bot/userbot-deployment.yaml
         kubectl apply -f ./user_bot/userbot-deployment.yaml -n telegram-bot
 
     - name: Deploy postgres
-      if: ${{ inputs.deploy == 'true' }}
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:$IMAGE_TAG|g" ./postgres/postgres-sts.yaml
         kubectl apply -f ./postgres/postgres-sts.yaml -n telegram-bot
 
     - name: Deploy admin-telegram-bot
-      if: ${{ inputs.deploy == 'true' }}
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-ADMIN-BOT>|ghcr.io/malinda3/parser_test/telegram-admin-bot:$IMAGE_TAG|g" ./admin_bot/admin-deployment.yaml
