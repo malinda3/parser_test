@@ -3,9 +3,14 @@ GITHUB_REPO := parser_test
 
 IMAGE_NAME := ghcr.io/$(GITHUB_USER)/$(GITHUB_REPO)/$(1):$(IMAGE_TAG)
 
+PARSER_PATH := ./parser
+BOT_PATH := ./user_bot
+POSTGRES_PATH := ./postgres
+ADMIN_BOT_PATH := ./admin_bot
+
 define build_image
 	@echo "Building Docker image for $(1) with tag $(IMAGE_TAG)..."
-	docker build -t $(IMAGE_NAME) $(2)
+	docker buildx build -t $(IMAGE_NAME) $(2) --push
 endef
 
 define push_image
