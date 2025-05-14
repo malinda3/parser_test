@@ -30,8 +30,26 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build Docker images and push to GHCR
+    - name: Build and Push parser image
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
-        make -f Makefile.ci build IMAGE_TAG=$IMAGE_TAG 
-        make -f Makefile.ci push IMAGE_TAG=$IMAGE_TAG
+        make -f Makefile.ci build-parser IMAGE_TAG=$IMAGE_TAG
+        make -f Makefile.ci push-parser IMAGE_TAG=$IMAGE_TAG
+
+    - name: Build and Push bot image
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        make -f Makefile.ci build-bot IMAGE_TAG=$IMAGE_TAG
+        make -f Makefile.ci push-bot IMAGE_TAG=$IMAGE_TAG
+
+    - name: Build and Push postgres image
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        make -f Makefile.ci build-postgres IMAGE_TAG=$IMAGE_TAG
+        make -f Makefile.ci push-postgres IMAGE_TAG=$IMAGE_TAG
+
+    - name: Build and Push admin-bot image
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        make -f Makefile.ci build-admin-bot IMAGE_TAG=$IMAGE_TAG
+        make -f Makefile.ci push-admin-bot IMAGE_TAG=$IMAGE_TAG
