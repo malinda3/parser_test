@@ -17,7 +17,7 @@ spec:
           image: <IMAGE-BOT>
           env:
             - name: API_URL
-              value: "http://parser.kafka.svc.cluster.local:8000/parse"
+              value: "http://parser.telegram-bot.svc.cluster.local:8000/parse"
             - name: BOT_TOKEN
               valueFrom:
                 secretKeyRef:
