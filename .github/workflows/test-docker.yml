@@ -1,0 +1,32 @@
+name: CI Test - Login to GHCR only
+
+on:
+  push:
+    branches: [ "v0.1" ]
+
+jobs:
+  test-ghcr-login:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Echo to verify CI is working
+        run: echo "work!"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Confirm Docker login
+        run: |
+          echo "✅ Logged in to ghcr.io successfully"
+          docker info
