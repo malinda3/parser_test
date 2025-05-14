@@ -77,8 +77,8 @@ jobs:
     - name: Deploy postgres
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
-        sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:${IMAGE_TAG}|g" ./postgres/postgres-deployment.yaml
-        kubectl apply -f ./postgres/postgres-deployment.yaml -n telegram-bot
+        sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:${IMAGE_TAG}|g" ./postgres/postgres-sts.yaml
+        kubectl apply -f ./postgres/postgres-sts.yaml -n telegram-bot
 
     - name: Deploy admin-telegram-bot
       run: |
