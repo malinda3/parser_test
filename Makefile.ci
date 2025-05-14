@@ -1,0 +1,42 @@
+GITHUB_USER := malinda3
+GITHUB_REPO := parser_test
+
+IMAGE_NAME := ghcr.io/$(GITHUB_USER)/$(GITHUB_REPO)/$(1):$(IMAGE_TAG)
+
+define build_image
+	@echo "Building Docker image for $(1) with tag $(IMAGE_TAG)..."
+	docker build -t $(IMAGE_NAME) $(2)
+endef
+
+define push_image
+	@echo "Pushing image $(IMAGE_NAME) to GitHub Container Registry..."
+	docker push $(IMAGE_NAME)
+endef
+
+build-parser:
+	$(call build_image,parser,$(PARSER_PATH))
+
+push-parser:
+	$(call push_image,parser)
+
+build-bot:
+	$(call build_image,telegram-bot,$(BOT_PATH))
+
+push-bot:
+	$(call push_image,telegram-bot)
+
+build-postgres:
+	$(call build_image,postgres,$(POSTGRES_PATH))
+
+push-postgres:
+	$(call push_image,postgres)
+
+build-admin-bot:
+	$(call build_image,telegram-admin-bot,$(ADMIN_BOT_PATH))
+
+push-admin-bot:
+	$(call push_image,telegram-admin-bot)
+
+build: build-parser build-bot build-postgres build-admin-bot
+
+push: push-parser push-bot push-postgres push-admin-bot
