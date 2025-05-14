@@ -57,6 +57,7 @@ jobs:
 
     - name: Set up kubeconfig
       run: |
+        mkdir -p $HOME/.kube  # Создаем каталог, если его нет
         echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
       env:
         KUBECONFIG: ${{ secrets.KUBECONFIG }}
