@@ -3,7 +3,6 @@ name: CI Test
 on:
   push:
     branches: [ "v0.1" ]
-name: CI/CD Pipeline
 
 jobs:
   build:
