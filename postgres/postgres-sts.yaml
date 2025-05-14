@@ -16,7 +16,6 @@ spec:
       containers:
       - name: postgres
         image: <IMAGE-POSTGRES>
-        imagePullPolicy: Never 
         env:
         - name: POSTGRES_USER
           value: "admin"

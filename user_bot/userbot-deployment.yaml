@@ -15,7 +15,6 @@ spec:
       containers:
         - name: bot
           image: <IMAGE-BOT>
-          imagePullPolicy: Never
           env:
             - name: API_URL
               value: "http://parser.kafka.svc.cluster.local:8000/parse"
