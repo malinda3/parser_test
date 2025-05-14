@@ -29,23 +29,53 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Build and Push parser image
+#Building 4 images and pushing to registry
+    - name: Build parser image
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         make -f Makefile.ci build-parser IMAGE_TAG=$IMAGE_TAG
 
-    - name: Build and Push bot image
+    - name: Build bot image
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         make -f Makefile.ci build-bot IMAGE_TAG=$IMAGE_TAG
 
-    - name: Build and Push postgres image
+    - name: Build postgres image
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         make -f Makefile.ci build-postgres IMAGE_TAG=$IMAGE_TAG
 
-    - name: Build and Push admin-bot image
+    - name: Build admin-bot image
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
         make -f Makefile.ci build-admin-bot IMAGE_TAG=$IMAGE_TAG
+#Applying them to k8 cluster
+    - name: Set up kubeconfig
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+      env:
+        KUBECONFIG: ${{ secrets.KUBECONFIG }}
+
+    - name: Deploy parser
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-PARSER>|ghcr.io/malinda3/parser_test/parser:${IMAGE_TAG}|g" ./parser/parser.yaml
+        kubectl apply -f ./parser/parser.yaml
+
+    - name: Deploy bot
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-BOT>|ghcr.io/malinda3/parser_test/telegram-bot:${IMAGE_TAG}|g" ./user_bot/userbot-deployment.yaml
+        kubectl apply -f ./user_bot/bot-deployment.yaml
+
+    - name: Deploy postgres
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:${IMAGE_TAG}|g" ./postgres/postgres-deployment.yaml
+        kubectl apply -f ./postgres/postgres-deployment.yaml
+
+    - name: Deploy admin-telegram-bot
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-ADMIN-BOT>|ghcr.io/malinda3/parser_test/telegram-admin-bot:${IMAGE_TAG}|g" ./admin_bot/admin-deployment.yaml
+        kubectl apply -f ./admin_bot/admin-deployment.yaml

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: parser
-          image: parser:latest
+          image: <IMAGE-PARSER>
           imagePullPolicy: Never
           ports:
             - containerPort: 8000

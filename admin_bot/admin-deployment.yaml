@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: admin-telegram-bot
-          image: telegram-admin-bot:latest
+          image: <IMAGE-ADMIN-BOT>
           imagePullPolicy: Never
           env:
             - name: BOT_TOKEN

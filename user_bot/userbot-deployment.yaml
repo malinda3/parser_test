@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: bot
-          image: telegram-bot:latest
+          image: <IMAGE-BOT>
           imagePullPolicy: Never
           env:
             - name: API_URL
