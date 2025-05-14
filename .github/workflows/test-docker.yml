@@ -90,6 +90,20 @@ jobs:
       env:
         KUBECONFIG: ${{ secrets.KUBECONFIG }}
 
+    - name: prepare_cluster_secrets
+      run: |
+        kubectl create secret generic telegram-api-test-key \
+          --from-literal=API_KEY="${{ secrets.TELEGRAM_API_TEST_KEY }}" \
+          -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
+
+        kubectl create secret generic telegram-api-admin-test-key \
+          --from-literal=API_KEY="${{ secrets.TELEGRAM_API_ADMIN_TEST_KEY }}" \
+          -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
+
+        kubectl create secret generic allowed-users \
+          --from-literal=ALLOWED_USER_IDS="${{ secrets.MY_ID }},${{ secrets.RUSALE_ADMIN }}" \
+          -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
+
     - name: Deploy parser
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
