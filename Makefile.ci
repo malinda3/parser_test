@@ -6,18 +6,26 @@ ADMIN_BOT_PATH := ./admin_bot
 build-parser:
 	@echo "Building Docker image for parser with tag $(IMAGE_TAG)..."
 	docker buildx build -t ghcr.io/malinda3/parser_test/parser:$(IMAGE_TAG) $(PARSER_PATH) --push
+	@echo "Listing Docker images after build:"
+	docker images
 
 build-bot:
 	@echo "Building Docker image for telegram-bot with tag $(IMAGE_TAG)..."
 	docker buildx build -t ghcr.io/malinda3/parser_test/telegram-bot:$(IMAGE_TAG) $(BOT_PATH) --push
+	@echo "Listing Docker images after build:"
+	docker images
 
 build-postgres:
 	@echo "Building Docker image for postgres with tag $(IMAGE_TAG)..."
 	docker buildx build -t ghcr.io/malinda3/parser_test/postgres:$(IMAGE_TAG) $(POSTGRES_PATH) --push
+	@echo "Listing Docker images after build:"
+	docker images
 
 build-admin-bot:
 	@echo "Building Docker image for telegram-admin-bot with tag $(IMAGE_TAG)..."
 	docker buildx build -t ghcr.io/malinda3/parser_test/telegram-admin-bot:$(IMAGE_TAG) $(ADMIN_BOT_PATH) --push
+	@echo "Listing Docker images after build:"
+	docker images
 
 push-parser:
 	@echo "Pushing parser image to GitHub Container Registry..."
