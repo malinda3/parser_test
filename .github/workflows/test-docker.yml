@@ -3,7 +3,7 @@ name: CI & Deploy on Master
 on:
   push:
     branches:
-      - master
+      - develop
 
 jobs:
   build-and-deploy:
