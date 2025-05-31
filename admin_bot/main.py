@@ -50,7 +50,7 @@ def get_confirm_keyboard(with_photo: bool) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 async def retranslate_start(update: Update, context: CallbackContext) -> int:
-    """Начало процесса ретрансляции"""
+    """Начало процесса рассылки"""
     if update.effective_user.id not in ALLOWED_USER_IDS:
         await update.message.reply_text("⛔ У вас нет прав для этой команды")
         return ConversationHandler.END

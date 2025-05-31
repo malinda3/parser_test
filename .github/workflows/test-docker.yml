@@ -3,7 +3,7 @@ name: CI & Deploy on Master
 on:
   push:
     branches:
-      - v0.1
+      - master
 
 jobs:
   build-and-deploy:
@@ -30,6 +30,15 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Test
+      run: |
+        IMAGE_TAG=test-runner
+        docker build \
+          -f ./parser/Dockerfile-test \
+          -t parser-test:$IMAGE_TAG \
+          ./parser
+        docker run --rm parser-test:$IMAGE_TAG
 
     # ======== BUILD IMAGES ==========
     - name: Build parser image
@@ -103,6 +112,12 @@ jobs:
         kubectl create secret generic allowed-users \
           --from-literal=ALLOWED_USER_IDS="${{ secrets.MY_ID }},${{ secrets.RUSALE_ADMIN }}" \
           -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
+ 
+    - name: Deploy postgres
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:$IMAGE_TAG|g" ./postgres/postgres-sts.yaml
+        kubectl apply -f ./postgres/postgres-sts.yaml -n telegram-bot
 
     - name: Deploy parser
       run: |
@@ -115,12 +130,6 @@ jobs:
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-BOT>|ghcr.io/malinda3/parser_test/telegram-bot:$IMAGE_TAG|g" ./user_bot/userbot-deployment.yaml
         kubectl apply -f ./user_bot/userbot-deployment.yaml -n telegram-bot
-
-    - name: Deploy postgres
-      run: |
-        IMAGE_TAG=$(git rev-parse --short HEAD)
-        sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:$IMAGE_TAG|g" ./postgres/postgres-sts.yaml
-        kubectl apply -f ./postgres/postgres-sts.yaml -n telegram-bot
 
     - name: Deploy admin-telegram-bot
       run: |
