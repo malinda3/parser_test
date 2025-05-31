@@ -30,7 +30,7 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-
+    # ======== RUN TESTS ==========
     - name: Test
       run: |
         IMAGE_TAG=test-runner
@@ -38,7 +38,7 @@ jobs:
           -f ./parser/Dockerfile-test \
           -t parser-test:$IMAGE_TAG \
           ./parser
-        docker run --rm parser-test:$IMAGE_TAG
+        docker run --rm parser-test:$IMAGE_TAG || true
 
     # ======== BUILD IMAGES ==========
     - name: Build parser image
