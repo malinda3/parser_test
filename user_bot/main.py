@@ -128,7 +128,7 @@ async def handle_order_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"Response content: {response.text}")
 
         if response.status_code != 200:
-            await update.message.reply_text(f"Ошибка API. Статус: {response.status_code}")
+            await update.message.reply_text(f"Ошибка. Попробуйте позже")
             return ORDER_STATE
 
         data = response.json()

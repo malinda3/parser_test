@@ -222,7 +222,7 @@ async def count_handler(update: Update, context: CallbackContext) -> None:
             word = pluralize(count)
             lines.append(f"👤 {uid} – {count} {word}:")
             for name, price, created in orders:
-                lines.append(f"  • {name} — {price} — {created}")
+                lines.append(f"  • {name} — {price}")
             lines.append("")
 
         await update.message.reply_text("\n".join(lines).strip())
