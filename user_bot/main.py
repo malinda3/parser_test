@@ -1,8 +1,22 @@
 import os
 import logging
 import requests
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters, ConversationHandler
+from telegram import (
+    Update,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+    KeyboardButton,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton
+)
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+    ConversationHandler
+)
 from telegram.error import InvalidToken
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -21,7 +35,6 @@ if not API_URL:
 logger.info(f"Bot token set: {BOT_TOKEN[:4]}...{BOT_TOKEN[-4:]}")
 
 current_request_id = 0
-
 ORDER_STATE = 1  # State for ordering flow
 
 def get_next_request_id():
@@ -69,7 +82,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logger.info(f"Received message from {update.message.from_user.id}: {text}")
 
-    # Меню действий
     if text == "🛍 Оформить заказ":
         await update.message.reply_text(
             "Отправьте ссылку на товар.",
@@ -78,19 +90,24 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ORDER_STATE
 
     elif text == "📖 FAQ":
-        await update.message.reply_text("FAQ: https://rusale.shop/individual")
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Открыть FAQ", url="https://rusale.shop/individual")]])
+        await update.message.reply_text("📖 Часто задаваемые вопросы:", reply_markup=keyboard)
 
     elif text == "🛡 Проверенные сайты":
-        await update.message.reply_text("Список сайтов: https://rusale.shop/trustworthy")
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Открыть список сайтов", url="https://rusale.shop/trustworthy")]])
+        await update.message.reply_text("🛡 Проверенные сайты:", reply_markup=keyboard)
 
     elif text == "👤 Поддержка":
-        await update.message.reply_text("Связаться с поддержкой: https://t.me/rusalemngr")
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Написать в поддержку", url="https://t.me/rusalemngr")]])
+        await update.message.reply_text("👤 Свяжитесь с нашей поддержкой:", reply_markup=keyboard)
 
     elif text == "📢 Канал":
-        await update.message.reply_text("Наш канал: https://t.me/russsale")
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Перейти в канал", url="https://t.me/russsale")]])
+        await update.message.reply_text("📢 Наш Telegram-канал:", reply_markup=keyboard)
 
     elif text == "💬 Отзывы":
-        await update.message.reply_text("Отзывы: https://t.me/russsale/1309")
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("Читать отзывы", url="https://t.me/russsale/1309")]])
+        await update.message.reply_text("💬 Отзывы наших клиентов:", reply_markup=keyboard)
 
     else:
         await update.message.reply_text("Пожалуйста, выберите действие из меню.")
@@ -135,6 +152,10 @@ async def handle_order_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         product_info = data.get("product_info", {})
         name = product_info.get("name", "Неизвестно")
         price = product_info.get("price", "Неизвестно")
+
+        # Добавляем "руб." к числу, если это число
+        if isinstance(price, (int, float)):
+            price = f"{price} руб."
 
         await update.message.reply_text(f"Название: {name}\nЦена: {price}")
         await update.message.reply_text("Вы вернулись в главное меню.", reply_markup=get_main_menu())
