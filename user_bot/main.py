@@ -161,7 +161,7 @@ async def handle_order_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except ValueError:
                     logger.warning(f"Не удалось разобрать цену: {price}")
 
-        await update.message.reply_text(f"Название: {name}\nЦена: {price}")
+        await update.message.reply_text(f"Название: {name}\nСсылка: {text}\nЦена: {price}\nДля оформления заказа и уточнения деталей перешлите сообщение менеджеру https://t.me/rusalemngr")
         await update.message.reply_text("Вы вернулись в главное меню.", reply_markup=get_main_menu())
         return ConversationHandler.END
 
