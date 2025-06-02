@@ -3,10 +3,11 @@ name: CI & Deploy on Master
 on:
   push:
     branches:
-      - v0.1
+      - develop
 
+#TEST JOB
 jobs:
-  build-and-deploy:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,8 +31,47 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+#RUN TESTS
+    - name: Test
+      run: |
+        IMAGE_TAG=test-runner
+        docker build \
+          -f ./parser/Dockerfile-test \
+          -t parser-test:$IMAGE_TAG \
+          ./parser
+        docker run --rm parser-test:$IMAGE_TAG || true
 
-    # ======== BUILD IMAGES ==========
+
+
+
+
+#BUILD JOB
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Restore Docker layer cache
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+#BUILD IMAGES AND PUSH TO REGISTRY
     - name: Build parser image
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
@@ -76,8 +116,34 @@ jobs:
       run: |
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+#DEPLOY JOB
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: manual-deploy 
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    # ========= DEPLOYMENT =========
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Restore Docker layer cache
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+#LOGIN TO CONTAINER REGISTRY
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+#SETTING UP KUBECTL
     - name: Set up kubectl
       uses: azure/setup-kubectl@v1
       with:
@@ -89,7 +155,7 @@ jobs:
         echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
       env:
         KUBECONFIG: ${{ secrets.KUBECONFIG }}
-
+#APPLY CLUSTER SECRETS
     - name: prepare_cluster_secrets
       run: |
         kubectl create secret generic telegram-api-test-key \
@@ -103,6 +169,12 @@ jobs:
         kubectl create secret generic allowed-users \
           --from-literal=ALLOWED_USER_IDS="${{ secrets.MY_ID }},${{ secrets.RUSALE_ADMIN }}" \
           -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
+#DEPLOYMENT
+    - name: Deploy postgres
+      run: |
+        IMAGE_TAG=$(git rev-parse --short HEAD)
+        sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:$IMAGE_TAG|g" ./postgres/postgres-sts.yaml
+        kubectl apply -f ./postgres -n telegram-bot
 
     - name: Deploy parser
       run: |
@@ -115,12 +187,6 @@ jobs:
         IMAGE_TAG=$(git rev-parse --short HEAD)
         sed -i "s|<IMAGE-BOT>|ghcr.io/malinda3/parser_test/telegram-bot:$IMAGE_TAG|g" ./user_bot/userbot-deployment.yaml
         kubectl apply -f ./user_bot/userbot-deployment.yaml -n telegram-bot
-
-    - name: Deploy postgres
-      run: |
-        IMAGE_TAG=$(git rev-parse --short HEAD)
-        sed -i "s|<IMAGE-POSTGRES>|ghcr.io/malinda3/parser_test/postgres:$IMAGE_TAG|g" ./postgres/postgres-sts.yaml
-        kubectl apply -f ./postgres/postgres-sts.yaml -n telegram-bot
 
     - name: Deploy admin-telegram-bot
       run: |
