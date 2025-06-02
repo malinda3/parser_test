@@ -14,6 +14,9 @@ import sys
 import asyncio
 import asyncpg
 from typing import Dict, Any
+import json
+from collections import defaultdict
+from datetime import datetime
 
 # Настройка логгирования
 logging.basicConfig(
@@ -163,6 +166,70 @@ async def confirm_send(update: Update, context: CallbackContext) -> int:
             await connection.close()
     
     return ConversationHandler.END
+# Функция для списка заказов
+async def count_handler(update: Update, context: CallbackContext) -> None:
+    """Обработчик команды /count — статистика по заказам с товарами, ценами и датами"""
+    if update.effective_user.id not in ALLOWED_USER_IDS:
+        await update.message.reply_text("⛔ У вас нет прав для этой команды")
+        return
+
+    try:
+        connection = await asyncpg.connect(**DB_CONFIG)
+        rows = await connection.fetch("""
+            SELECT user_id, content, created_at
+            FROM parsed_data
+            ORDER BY user_id, created_at;
+        """)
+        await connection.close()
+
+        if not rows:
+            await update.message.reply_text("🔍 В базе нет данных.")
+            return
+
+        # Группировка заказов по user_id
+        user_orders = defaultdict(list)
+
+        for row in rows:
+            uid = row["user_id"] or "неизвестно"
+
+            try:
+                content = json.loads(row["content"])
+                name = content.get("name", "Без названия")
+                price = content.get("price", "Без цены")
+            except Exception as e:
+                logger.warning(f"Ошибка парсинга JSON для {uid}: {e}")
+                name = "❌ Ошибка"
+                price = "—"
+
+            try:
+                created_at = row["created_at"].strftime('%Y-%m-%d %H:%M')
+            except Exception as e:
+                created_at = "—"
+
+            user_orders[uid].append((name, price, created_at))
+
+        def pluralize(count: int) -> str:
+            if count % 10 == 1 and count % 100 != 11:
+                return "заказ"
+            elif 2 <= count % 10 <= 4 and (count % 100 < 10 or count % 100 >= 20):
+                return "заказа"
+            else:
+                return "заказов"
+
+        lines = ["📊 Статистика по пользователям:\n"]
+        for uid, orders in user_orders.items():
+            count = len(orders)
+            word = pluralize(count)
+            lines.append(f"👤 {uid} – {count} {word}:")
+            for name, price, created in orders:
+                lines.append(f"  • {name} — {price} — {created}")
+            lines.append("")
+
+        await update.message.reply_text("\n".join(lines).strip())
+
+    except Exception as e:
+        logger.error(f"Ошибка в /count: {e}")
+        await update.message.reply_text("❌ Ошибка при обращении к базе.")
 
 # Настройка обработчиков
 def setup_handlers(application: Application) -> None:
@@ -180,6 +247,7 @@ def setup_handlers(application: Application) -> None:
         },
         fallbacks=[CommandHandler('cancel', lambda u,c: ConversationHandler.END)]
     )
+    application.add_handler(CommandHandler("count", count_handler))
     application.add_handler(conv_handler)
 
 # Запуск бота
