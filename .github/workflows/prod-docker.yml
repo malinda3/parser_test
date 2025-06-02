@@ -3,7 +3,7 @@ name: CI & Deploy on Master
 on:
   push:
     branches:
-      - develop
+      - master
 
 #TEST JOB
 jobs:
@@ -159,11 +159,11 @@ jobs:
     - name: prepare_cluster_secrets
       run: |
         kubectl create secret generic telegram-api-test-key \
-          --from-literal=API_KEY="${{ secrets.TELEGRAM_API_TEST_KEY }}" \
+          --from-literal=API_KEY="${{ secrets.TELEGRAM_API_PROD_KEY }}" \
           -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
 
         kubectl create secret generic telegram-api-admin-test-key \
-          --from-literal=API_KEY="${{ secrets.TELEGRAM_API_ADMIN_TEST_KEY }}" \
+          --from-literal=API_KEY="${{ secrets.TELEGRAM_API_ADMIN_PROD_KEY }}" \
           -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
 
         kubectl create secret generic allowed-users \
