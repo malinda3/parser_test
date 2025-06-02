@@ -5,10 +5,6 @@ on:
     branches:
       - develop
 
-
-
-
-
 #TEST JOB
 jobs:
   test:

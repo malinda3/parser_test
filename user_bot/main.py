@@ -70,7 +70,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     logger.info(f"Received message from {update.message.from_user.id}: {text}")
 
-    # Меню действий
     if text == "🛍 Оформить заказ":
         await update.message.reply_text(
             "Отправьте ссылку на товар.",
