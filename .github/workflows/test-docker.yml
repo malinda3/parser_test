@@ -5,6 +5,11 @@ on:
     branches:
       - develop
 
+
+
+
+
+#TEST JOB
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -30,7 +35,7 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    # ======== RUN TESTS ==========
+#RUN TESTS
     - name: Test
       run: |
         IMAGE_TAG=test-runner
@@ -44,7 +49,7 @@ jobs:
 
 
 
-#### BUILD JOB
+#BUILD JOB
   build:
     needs: test
     runs-on: ubuntu-latest
@@ -70,7 +75,7 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    # ======== BUILD IMAGES AND PUSH TO POSTGRES ==========
+#BUILD IMAGES AND PUSH TO REGISTRY
     - name: Build parser image
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
@@ -115,11 +120,13 @@ jobs:
       run: |
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-#### DEPLOY
+#DEPLOY JOB
   deploy:
     needs: build
     runs-on: ubuntu-latest
-
+    environment:
+      name: manual-deploy 
+      wait_timer: 0 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -134,14 +141,14 @@ jobs:
         key: ${{ runner.os }}-buildx-${{ github.sha }}
         restore-keys: |
           ${{ runner.os }}-buildx-
-    # ========= LOGIN TO CONTAINER REGISTRY =========
+#LOGIN TO CONTAINER REGISTRY
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    # ========= SETTING UP KUBECTL =========
+#SETTING UP KUBECTL
     - name: Set up kubectl
       uses: azure/setup-kubectl@v1
       with:
@@ -153,7 +160,7 @@ jobs:
         echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
       env:
         KUBECONFIG: ${{ secrets.KUBECONFIG }}
-    # ========= APPLY CLUSTER SECRETS =========
+#APPLY CLUSTER SECRETS
     - name: prepare_cluster_secrets
       run: |
         kubectl create secret generic telegram-api-test-key \
@@ -167,7 +174,7 @@ jobs:
         kubectl create secret generic allowed-users \
           --from-literal=ALLOWED_USER_IDS="${{ secrets.MY_ID }},${{ secrets.RUSALE_ADMIN }}" \
           -n telegram-bot --dry-run=client -o yaml | kubectl apply -f -
-     # =========       DEPLOYMENT       =========
+#DEPLOYMENT
     - name: Deploy postgres
       run: |
         IMAGE_TAG=$(git rev-parse --short HEAD)
