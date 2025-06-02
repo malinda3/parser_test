@@ -4,6 +4,7 @@ import requests
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters, ConversationHandler
 from telegram.error import InvalidToken
+import re
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -132,8 +133,31 @@ async def handle_order_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         data = response.json()
         product_info = data.get("product_info", {})
+
         name = product_info.get("name", "Неизвестно")
         price = product_info.get("price", "Неизвестно")
+
+        # Конвертация валют в рубли
+        CURRENCY_RATES = {
+            "$": 90,
+            "€": 98,
+            "¥": 12.5,
+            "£": 115
+        }
+
+        if isinstance(price, str):
+            match = re.search(r"([€$¥£])\s*([\d.,]+)", price)
+            if match:
+                symbol = match.group(1)
+                amount_str = match.group(2).replace(",", ".")
+                try:
+                    amount = float(amount_str)
+                    rate = CURRENCY_RATES.get(symbol)
+                    if rate:
+                        rub_price = round(amount * rate)
+                        price = f"≈ {rub_price} руб."
+                except ValueError:
+                    logger.warning(f"Не удалось разобрать цену: {price}")
 
         await update.message.reply_text(f"Название: {name}\nЦена: {price}")
         await update.message.reply_text("Вы вернулись в главное меню.", reply_markup=get_main_menu())
