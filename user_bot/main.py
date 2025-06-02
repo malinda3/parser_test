@@ -78,19 +78,19 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ORDER_STATE
 
     elif text == "📖 FAQ":
-        await update.message.reply_text("FAQ: https://example.com/faq")
+        await update.message.reply_text("FAQ: https://rusale.shop/individual")
 
     elif text == "🛡 Проверенные сайты":
-        await update.message.reply_text("Список сайтов: https://example.com/trusted")
+        await update.message.reply_text("Список сайтов: https://rusale.shop/trustworthy")
 
     elif text == "👤 Поддержка":
-        await update.message.reply_text("Связаться с поддержкой: https://t.me/support_user")
+        await update.message.reply_text("Связаться с поддержкой: https://t.me/rusalemngr")
 
     elif text == "📢 Канал":
-        await update.message.reply_text("Наш канал: https://t.me/example_channel")
+        await update.message.reply_text("Наш канал: https://t.me/russsale")
 
     elif text == "💬 Отзывы":
-        await update.message.reply_text("Отзывы: https://t.me/example_channel/123")
+        await update.message.reply_text("Отзывы: https://t.me/russsale/1309")
 
     else:
         await update.message.reply_text("Пожалуйста, выберите действие из меню.")
