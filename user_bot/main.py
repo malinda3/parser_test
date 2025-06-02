@@ -137,24 +137,27 @@ async def handle_order_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         name = product_info.get("name", "Неизвестно")
         price = product_info.get("price", "Неизвестно")
 
-        # Конвертация валют в рубли
+        # Конвертация валют с учетом комиссии
         CURRENCY_RATES = {
-            "$": 90,
-            "€": 98,
-            "¥": 12.5,
-            "£": 115
+            "$": 82, "USD": 82,
+            "€": 90, "EUR": 90,
+            "£": 115, "GBP": 115,
+            "¥": 0.6, "JPY": 0.6,
+            "CNY": 12.5, "元": 12.5
         }
 
         if isinstance(price, str):
-            match = re.search(r"([€$¥£])\s*([\d.,]+)", price)
+            match = re.search(r"(€|\$|¥|£|USD|EUR|GBP|JPY|CNY|元)\s*([\d.,]+)", price.upper())
             if match:
-                symbol = match.group(1)
+                currency = match.group(1)
                 amount_str = match.group(2).replace(",", ".")
                 try:
                     amount = float(amount_str)
-                    rate = CURRENCY_RATES.get(symbol)
+                    commission = max(amount * 0.15, 15)
+                    total = amount + commission
+                    rate = CURRENCY_RATES.get(currency)
                     if rate:
-                        rub_price = round(amount * rate)
+                        rub_price = round(total * rate)
                         price = f"≈ {rub_price} руб."
                 except ValueError:
                     logger.warning(f"Не удалось разобрать цену: {price}")
