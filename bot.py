@@ -62,8 +62,8 @@ class BotHandler:
             [InlineKeyboardButton("FAQ", url="https://rusale.shop/individual")],
             [InlineKeyboardButton("Вещи в наличии", url="https://rusale.shop/sale")],
             [InlineKeyboardButton("Поддержка", url="https://t.me/rusalemngr")],
-            [InlineKeyboardButton("Наш канал", url="https://t.me/russsale")],
-            [InlineKeyboardButton("Отзывы", url="https://t.me/russsale/1309")]
+            [InlineKeyboardButton("Наш канал", url="https://t.me/rusaleshop")],
+            [InlineKeyboardButton("Отзывы", url="https://t.me/rusaleshop/1309")]
         ]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
